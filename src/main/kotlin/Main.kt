@@ -20,6 +20,7 @@ import java.awt.FileDialog
 import java.awt.Frame
 import java.time.Duration
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.*
 
 val playSpeed = listOf("0.1倍速", "0.5倍速", "1倍速", "5倍速", "10倍速")
@@ -35,7 +36,7 @@ fun App() {
   var host by remember { mutableStateOf("127.0.0.1") }
   var port by remember { mutableStateOf("9999") }
   var logs by remember { mutableStateOf(listOf<String>()) }
-  var data by remember { mutableStateOf<Map<Date, List<String>>?>(HashMap()) }
+  var data by remember { mutableStateOf<Map<LocalDateTime, List<String>>?>(HashMap()) }
 
   var isFileChooserOpen by remember { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
@@ -45,6 +46,7 @@ fun App() {
       isFileChooserOpen = false
       selectedFilePath = filePath ?: ""
       data = filePath?.redExcel()
+      println(data)
     })
   }
 
@@ -94,8 +96,8 @@ fun App() {
             val baseTime = LocalDateTime.now()
 
             val tasks = data!!.map { entry ->
-              val durationWithSpeed =
-                Duration.ofMillis(((entry.key.time - firstTaskTime.time) * magnification[playSpeedIndex]).toLong())
+              val durationLong = (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
+              val durationWithSpeed = Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
               NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
             }
 
