@@ -20,6 +20,8 @@ import core.NettyTask
 import kotlinx.coroutines.launch
 import org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException
 import utils.NoValidTimeException
+import utils.TimeIndexNotValidException
+import utils.TimeIndexOutOfIndexException
 import utils.redExcel
 import java.awt.FileDialog
 import java.awt.Frame
@@ -37,6 +39,8 @@ fun App() {
 
   var error by remember { mutableStateOf("") }
   var selectedFilePath by remember { mutableStateOf("") }
+  var isGetTimeAutomatically by remember { mutableStateOf(true) }
+  var dateIndex by remember { mutableStateOf("") }
   var isNettyTarget by remember { mutableStateOf(true) }
   var playSpeedIndex by remember { mutableStateOf(2) }
   var host by remember { mutableStateOf("127.0.0.1") }
@@ -51,19 +55,22 @@ fun App() {
     FileDialog(onCloseRequest = { filePath ->
       isFileChooserOpen = false
       try {
-        data = filePath?.redExcel()
+        data = filePath?.redExcel(dateIndex = if (isGetTimeAutomatically) -1 else dateIndex.toInt())
+        println(data)
         selectedFilePath = filePath ?: ""
         error = ""
       } catch (e: Exception) {
+        data = null
         selectedFilePath = ""
         error = when (e) {
-          is NoValidTimeException -> {
-            "所选文件无有效的时间列"
-          }
+          is NoValidTimeException -> e.msg
           is NotOfficeXmlFileException -> {
             "所选文件并非有效 excel 文件"
           }
+          is TimeIndexOutOfIndexException -> e.msg
+          is TimeIndexNotValidException -> e.msg
           else -> {
+            e.printStackTrace()
             "未知错误"
           }
         }
@@ -80,12 +87,30 @@ fun App() {
     ) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
-        AnimatedVisibility (error.isNotEmpty()) {
+        AnimatedVisibility(error.isNotEmpty()) {
           Text(error,
             modifier = Modifier
               .fillMaxWidth()
               .border(2.dp, MaterialTheme.colors.error, RoundedCornerShape(50))
-              .padding(8.dp)
+              .padding(16.dp)
+          )
+        }
+
+        Text("获取时间方式")
+        Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+          RadioButton(selected = isGetTimeAutomatically, onClick = { isGetTimeAutomatically = true })
+          Text("自动")
+          RadioButton(selected = !isGetTimeAutomatically, onClick = { isGetTimeAutomatically = false })
+          Text("手动指定时间列")
+        }
+        AnimatedVisibility(!isGetTimeAutomatically) {
+          OutlinedTextField(
+            value = dateIndex,
+            onValueChange = { value ->
+              if (value.length <= 2) {
+                dateIndex = value.filter { it.isDigit() }
+              }
+            }
           )
         }
 
@@ -120,26 +145,30 @@ fun App() {
         Text("端口")
         OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("例如：9999") })
 
-        Button(onClick = {
-          data?.let {
-            val firstTaskTime = it.keys.first()
-            val baseTime = LocalDateTime.now()
+        Button(
+          onClick = {
+            data?.let {
+              val firstTaskTime = it.keys.first()
+              val baseTime = LocalDateTime.now()
 
-            val tasks = data!!.map { entry ->
-              val durationLong = (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
-              val durationWithSpeed = Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
-              NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
-            }
+              val tasks = data!!.map { entry ->
+                val durationLong =
+                  (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
+                val durationWithSpeed = Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
+                NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
+              }
 
-            scope.launch {
-              tasks.forEach { task ->
-                task.run {
-                  logs = logs + "${task.time}:$it"
+              scope.launch {
+                tasks.forEach { task ->
+                  task.run { content ->
+                    logs = logs + "${task.time}:$content"
+                  }
                 }
               }
             }
-          }
-        }, enabled = !data.isNullOrEmpty() && host.isNotEmpty() && port.isNotEmpty()) {
+          },
+          enabled = !data.isNullOrEmpty() && host.isNotEmpty() && port.isNotEmpty()
+        ) {
           Text("开始发送")
         }
 
