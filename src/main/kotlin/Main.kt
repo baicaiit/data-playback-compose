@@ -1,9 +1,12 @@
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +18,8 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import core.NettyTask
 import kotlinx.coroutines.launch
+import org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException
+import utils.NoValidTimeException
 import utils.redExcel
 import java.awt.FileDialog
 import java.awt.Frame
@@ -30,6 +35,7 @@ val magnification = listOf(10.0, 2.0, 1.0, 0.2, 0.1)
 @Preview
 fun App() {
 
+  var error by remember { mutableStateOf("") }
   var selectedFilePath by remember { mutableStateOf("") }
   var isNettyTarget by remember { mutableStateOf(true) }
   var playSpeedIndex by remember { mutableStateOf(2) }
@@ -44,9 +50,24 @@ fun App() {
   if (isFileChooserOpen) {
     FileDialog(onCloseRequest = { filePath ->
       isFileChooserOpen = false
-      selectedFilePath = filePath ?: ""
-      data = filePath?.redExcel()
-      println(data)
+      try {
+        data = filePath?.redExcel()
+        selectedFilePath = filePath ?: ""
+        error = ""
+      } catch (e: Exception) {
+        selectedFilePath = ""
+        error = when (e) {
+          is NoValidTimeException -> {
+            "所选文件无有效的时间列"
+          }
+          is NotOfficeXmlFileException -> {
+            "所选文件并非有效 excel 文件"
+          }
+          else -> {
+            "未知错误"
+          }
+        }
+      }
     })
   }
 
@@ -58,6 +79,15 @@ fun App() {
         .padding(16.dp)
     ) {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+        AnimatedVisibility (error.isNotEmpty()) {
+          Text(error,
+            modifier = Modifier
+              .fillMaxWidth()
+              .border(2.dp, MaterialTheme.colors.error, RoundedCornerShape(50))
+              .padding(8.dp)
+          )
+        }
 
         Text("选择需要发送的文件: $selectedFilePath")
         OutlinedButton(onClick = {
