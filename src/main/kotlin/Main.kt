@@ -1,6 +1,7 @@
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -132,12 +133,14 @@ fun App() {
     }
   }
 
-  MaterialTheme {
+  MaterialTheme(
+    colors = if (isSystemInDarkTheme()) ui.darkColors else ui.lightColors
+  ) {
     Scaffold(scaffoldState = scaffoldState) {
       Box(
         modifier = Modifier
           .fillMaxSize()
-          .background(MaterialTheme.colors.background)
+          .background(MaterialTheme.colors.surface)
           .padding(16.dp)
       ) {
         Row(
