@@ -3,6 +3,7 @@ package utils
 import org.apache.poi.ss.usermodel.DateUtil
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.FileInputStream
+import java.lang.Integer.min
 import java.time.LocalDateTime
 
 class NoValidTimeException(val msg: String) : Exception(msg)
@@ -13,7 +14,9 @@ class TimeIndexNotValidException(val msg: String) : Exception(msg)
  * 依据文件路径录入excel数据，读取失败时返回null
  */
 fun String.redExcel(
-  dateIndex: Int = -1,
+  dateColIndex: Int = -1,
+  startRowIndex: Int = 0,
+  endRowIndex: Int = Int.MAX_VALUE,
 ): Map<LocalDateTime, List<String>> {
   val map = HashMap<LocalDateTime, List<String>>()
   val xssfWorkbook = XSSFWorkbook(FileInputStream(this))
@@ -22,16 +25,16 @@ fun String.redExcel(
     val sheet = xssfWorkbook.getSheetAt(i)
     val maxRow = sheet.lastRowNum
     println("表格共有$maxRow 行")
-    for (row in 1..maxRow) {
+    for (row in startRowIndex..min(maxRow, endRowIndex)) {
       var dateFlag = false
       val content = ArrayList<String>()
       val maxCol = sheet.getRow(row).lastCellNum.toInt()
       println("表格共有$maxCol 列")
-      if (dateIndex >= maxCol) {
+      if (dateColIndex >= maxCol) {
         throw TimeIndexOutOfIndexException("所选时间列号不存在")
       }
-      if (dateIndex != -1) {
-        val dateTime = sheet.getRow(row).getCell(dateIndex).localDateTimeCellValue
+      if (dateColIndex != -1) {
+        val dateTime = sheet.getRow(row).getCell(dateColIndex).localDateTimeCellValue
         if (dateTime.year == 1900) {
           throw TimeIndexNotValidException("所选时间列数据并非时间格式")
         }
@@ -44,7 +47,7 @@ fun String.redExcel(
           map[cell.localDateTimeCellValue] = content
           dateFlag = true
         } else {
-          if (col != dateIndex)
+          if (col != dateColIndex)
             content.add(cell.toString())
         }
       }

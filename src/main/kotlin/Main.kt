@@ -30,8 +30,8 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
-val playSpeed = listOf("0.1倍速", "0.5倍速", "1倍速", "5倍速", "10倍速", "1000倍速")
-val magnification = listOf(10.0, 2.0, 1.0, 0.2, 0.1, 0.001)
+val playSpeed = listOf("0.1倍速", "0.5倍速", "1倍速", "10倍速", "100倍速")
+val magnification = listOf(10.0, 2.0, 1.0, 0.1, 0.01)
 
 enum class JobStatus {
   NEW,
@@ -60,25 +60,39 @@ fun App() {
   var error by remember { mutableStateOf("") }
   var selectedFilePath by remember { mutableStateOf("") }
   var isGetTimeAutomatically by remember { mutableStateOf(true) }
-  var dateIndex by remember { mutableStateOf("") }
+  var dateColIndex by remember { mutableStateOf("") }
+  var startRowIndex by remember { mutableStateOf("") }
+  var endRowIndex by remember { mutableStateOf("") }
   var isNettyTarget by remember { mutableStateOf(true) }
   var playSpeedIndex by remember { mutableStateOf(2) }
   var host by remember { mutableStateOf("127.0.0.1") }
   var port by remember { mutableStateOf("9999") }
   var topic by remember { mutableStateOf("Topic1") }
   var logs by remember { mutableStateOf(listOf<String>()) }
-  var data by remember { mutableStateOf<Map<LocalDateTime, List<String>>?>(HashMap()) }
+  var data by remember { mutableStateOf<Map<LocalDateTime, List<String>>?>(null) }
   var job by remember { mutableStateOf<Job?>(null) }
   var isStartButtonEnabled by remember { mutableStateOf(true) }
   val scaffoldState = rememberScaffoldState()
   var isFileChooserOpen by remember { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
 
+  fun getSubmitState(): Boolean {
+    if (data == null) return false
+    if (host.isEmpty()) return false
+    if (port.isEmpty()) return false
+    if (!isNettyTarget && topic.isEmpty()) return false
+    return true
+  }
+
   if (isFileChooserOpen) {
     FileDialog(onCloseRequest = { filePath ->
       isFileChooserOpen = false
       try {
-        data = filePath?.redExcel(dateIndex = if (isGetTimeAutomatically) -1 else dateIndex.toInt())
+        data = filePath?.redExcel(
+          dateColIndex = if (isGetTimeAutomatically) -1 else dateColIndex.toInt() - 1,
+          startRowIndex = if (startRowIndex.isNotEmpty()) startRowIndex.toInt() - 1 else 0,
+          endRowIndex = if (endRowIndex.isNotEmpty()) endRowIndex.toInt() - 1 else Int.MAX_VALUE
+        )
         println(data)
         selectedFilePath = filePath ?: ""
         error = ""
@@ -95,7 +109,7 @@ fun App() {
           is NullPointerException -> "请检查上传的文件，确保不含空值"
           else -> {
             e.printStackTrace()
-            "未知错误"
+            "未知错误 ${e.message}"
           }
         }
       }
@@ -123,7 +137,7 @@ fun App() {
         ) {
           Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.wrapContentWidth()
+            modifier = Modifier.wrapContentWidth().widthIn(max = 300.dp)
           ) {
 
             Text("获取时间方式")
@@ -135,18 +149,39 @@ fun App() {
             }
             AnimatedVisibility(!isGetTimeAutomatically) {
               OutlinedTextField(
-                value = dateIndex,
+                value = dateColIndex,
                 onValueChange = { value ->
                   if (value.length <= 2) {
-                    dateIndex = value.filter { it.isDigit() }
+                    dateColIndex = value.filter { it.isDigit() }
                   }
                 }
               )
             }
 
+            Text("请输入起始行号和终止行号，默认发送全部数据")
+
+            OutlinedTextField(
+              value = startRowIndex,
+              onValueChange = { value ->
+                if (value.length <= 2) {
+                  startRowIndex = value.filter { it.isDigit() }
+                }
+              },
+              label = { Text("起始行") }
+            )
+            OutlinedTextField(
+              value = endRowIndex,
+              onValueChange = { value ->
+                if (value.length <= 2) {
+                  endRowIndex = value.filter { it.isDigit() }
+                }
+              },
+              label = { Text("终止行") }
+            )
+
             Text("选择需要发送的文件")
             AnimatedVisibility(selectedFilePath.isNotEmpty()) {
-              Text(selectedFilePath, modifier = Modifier.widthIn(max = 300.dp))
+              Text(selectedFilePath)
             }
             OutlinedButton(onClick = {
               isFileChooserOpen = true
@@ -230,7 +265,7 @@ fun App() {
                     }
                   }
                 },
-                enabled = isStartButtonEnabled
+                enabled = isStartButtonEnabled && getSubmitState()
               ) {
                 Text("开始发送")
               }
@@ -277,7 +312,7 @@ fun FileDialog(
 }, dispose = FileDialog::dispose)
 
 fun main() = application {
-  val windowState = rememberWindowState(height = 650.dp)
+  val windowState = rememberWindowState(width = 850.dp, height = 850.dp)
   Window(
     title = "数据回放系统",
     state = windowState,
