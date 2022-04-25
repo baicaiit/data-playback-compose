@@ -4,10 +4,10 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
   kotlin("jvm") version "1.6.10"
-  id("org.jetbrains.compose") version "1.0.1"
+  id("org.jetbrains.compose") version "1.1.1"
 }
 
-group = "me.hyoban"
+group = "cc.hyoban"
 version = "1.0"
 
 repositories {
@@ -33,7 +33,7 @@ compose.desktop {
     mainClass = "MainKt"
     nativeDistributions {
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-      packageName = "data-playback-compose"
+      packageName = "cc.hyoban.data-playback-compose"
       packageVersion = "1.0.0"
     }
   }
