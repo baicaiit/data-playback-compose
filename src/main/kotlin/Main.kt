@@ -16,6 +16,7 @@ import androidx.compose.ui.window.AwtWindow
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import core.KafkaTask
 import core.NettyTask
 import kotlinx.coroutines.launch
 import org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException
@@ -28,7 +29,6 @@ import java.awt.Frame
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
-import java.util.*
 
 val playSpeed = listOf("0.1倍速", "0.5倍速", "1倍速", "5倍速", "10倍速")
 val magnification = listOf(10.0, 2.0, 1.0, 0.2, 0.1)
@@ -45,6 +45,7 @@ fun App() {
   var playSpeedIndex by remember { mutableStateOf(2) }
   var host by remember { mutableStateOf("127.0.0.1") }
   var port by remember { mutableStateOf("9999") }
+  var topic by remember { mutableStateOf("Topic1") }
   var logs by remember { mutableStateOf(listOf<String>()) }
   var data by remember { mutableStateOf<Map<LocalDateTime, List<String>>?>(HashMap()) }
 
@@ -145,6 +146,11 @@ fun App() {
         Text("端口")
         OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("例如：9999") })
 
+        if (!isNettyTarget) {
+          Text("Topic")
+          OutlinedTextField(value = topic, onValueChange = { topic = it }, label = { Text("例如：Topic1") })
+        }
+
         Button(
           onClick = {
             data?.let {
@@ -155,7 +161,11 @@ fun App() {
                 val durationLong =
                   (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
                 val durationWithSpeed = Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
-                NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
+                if (isNettyTarget) {
+                  NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
+                } else {
+                  KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
+                }
               }
 
               scope.launch {

@@ -23,6 +23,8 @@ dependencies {
   implementation("io.netty:netty-all:4.1.76.Final")
   // https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml
   implementation("org.apache.poi:poi-ooxml:5.2.2")
+  // https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients
+  implementation("org.apache.kafka:kafka-clients:3.1.0")
 }
 
 tasks.withType<KotlinCompile> {
