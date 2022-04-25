@@ -1,12 +1,10 @@
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -72,7 +70,7 @@ fun App() {
   var data by remember { mutableStateOf<Map<LocalDateTime, List<String>>?>(HashMap()) }
   var job by remember { mutableStateOf<Job?>(null) }
   var isStartButtonEnabled by remember { mutableStateOf(true) }
-
+  val scaffoldState = rememberScaffoldState()
   var isFileChooserOpen by remember { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
 
@@ -104,157 +102,157 @@ fun App() {
     })
   }
 
+  if (error.isNotEmpty()) {
+    LaunchedEffect(scaffoldState.snackbarHostState) {
+      scaffoldState.snackbarHostState.showSnackbar(error)
+    }
+  }
+
   MaterialTheme {
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(MaterialTheme.colors.background)
-        .padding(16.dp)
-    ) {
-      Row(
+    Scaffold(scaffoldState = scaffoldState) {
+      Box(
         modifier = Modifier
-          .fillMaxSize(),
-        horizontalArrangement = Arrangement.SpaceAround
+          .fillMaxSize()
+          .background(MaterialTheme.colors.background)
+          .padding(16.dp)
       ) {
-        Column(
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-          modifier = Modifier.wrapContentWidth()
+        Row(
+          modifier = Modifier
+            .fillMaxSize(),
+          horizontalArrangement = Arrangement.SpaceAround
         ) {
+          Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.wrapContentWidth()
+          ) {
 
-          AnimatedVisibility(error.isNotEmpty()) {
-            Text(error,
-              modifier = Modifier
-                .widthIn(max = 300.dp)
-                .border(2.dp, MaterialTheme.colors.error, RoundedCornerShape(50))
-                .padding(16.dp)
-            )
-          }
-
-          Text("获取时间方式")
-          Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(selected = isGetTimeAutomatically, onClick = { isGetTimeAutomatically = true })
-            Text("自动")
-            RadioButton(selected = !isGetTimeAutomatically, onClick = { isGetTimeAutomatically = false })
-            Text("手动指定时间列")
-          }
-          AnimatedVisibility(!isGetTimeAutomatically) {
-            OutlinedTextField(
-              value = dateIndex,
-              onValueChange = { value ->
-                if (value.length <= 2) {
-                  dateIndex = value.filter { it.isDigit() }
+            Text("获取时间方式")
+            Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+              RadioButton(selected = isGetTimeAutomatically, onClick = { isGetTimeAutomatically = true })
+              Text("自动")
+              RadioButton(selected = !isGetTimeAutomatically, onClick = { isGetTimeAutomatically = false })
+              Text("手动指定时间列")
+            }
+            AnimatedVisibility(!isGetTimeAutomatically) {
+              OutlinedTextField(
+                value = dateIndex,
+                onValueChange = { value ->
+                  if (value.length <= 2) {
+                    dateIndex = value.filter { it.isDigit() }
+                  }
                 }
-              }
-            )
-          }
+              )
+            }
 
-          Text("选择需要发送的文件")
-          AnimatedVisibility(selectedFilePath.isNotEmpty()) {
-            Text(selectedFilePath, modifier = Modifier.widthIn(max = 300.dp))
-          }
-          OutlinedButton(onClick = {
-            isFileChooserOpen = true
-          }, modifier = Modifier.padding(horizontal = 8.dp)) {
-            Text("选择")
-          }
+            Text("选择需要发送的文件")
+            AnimatedVisibility(selectedFilePath.isNotEmpty()) {
+              Text(selectedFilePath, modifier = Modifier.widthIn(max = 300.dp))
+            }
+            OutlinedButton(onClick = {
+              isFileChooserOpen = true
+            }, modifier = Modifier.padding(horizontal = 8.dp)) {
+              Text("选择")
+            }
 
-          Text("回放速度")
-          Column(Modifier.selectableGroup()) {
-            playSpeed.forEachIndexed { index, s ->
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = playSpeedIndex == index, onClick = { playSpeedIndex = index })
-                Text(s)
+            Text("回放速度")
+            Column(Modifier.selectableGroup()) {
+              playSpeed.forEachIndexed { index, s ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                  RadioButton(selected = playSpeedIndex == index, onClick = { playSpeedIndex = index })
+                  Text(s)
+                }
               }
             }
           }
-        }
 
-        Column(
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-          modifier = Modifier.wrapContentWidth()
-        ) {
-          Text("目标端口类型")
-          Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(selected = isNettyTarget, onClick = { isNettyTarget = true })
-            Text("Netty")
-            RadioButton(selected = !isNettyTarget, onClick = { isNettyTarget = false })
-            Text("Kafka")
-          }
-
-          Text("地址")
-          OutlinedTextField(value = host, onValueChange = {
-            host = it
-          }, label = { Text("例如：127.0.0.1") })
-
-          Text("端口")
-          OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("例如：9999") })
-
-          if (!isNettyTarget) {
-            Text("Topic")
-            OutlinedTextField(value = topic, onValueChange = { topic = it }, label = { Text("例如：Topic1") })
-          }
-
-          Row {
-            Button(
-              onClick = {
-                isStartButtonEnabled = false
-                data?.let {
-                  val firstTaskTime = it.keys.first()
-                  val baseTime = LocalDateTime.now()
-
-                  val tasks = data!!.map { entry ->
-                    val durationLong =
-                      (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
-                    val durationWithSpeed = Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
-                    if (isNettyTarget) {
-                      NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
-                    } else {
-                      KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
-                    }
-                  }
-
-                  job = scope.launch {
-                    tasks.forEach { task ->
-                      task.run { content ->
-                        logs = logs + "${task.time}:$content"
-                      }
-                    }
-                  }
-                  job?.let { job ->
-                    job.invokeOnCompletion(true) {
-                      if (
-                        job.status() == JobStatus.COMPLETED ||
-                        job.status() == JobStatus.CANCELLED ||
-                        job.status() == JobStatus.CANCELLING
-                      ) {
-                        isStartButtonEnabled = true
-                      }
-                    }
-                  }
-                }
-              },
-              enabled = isStartButtonEnabled
-            ) {
-              Text("开始发送")
+          Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.wrapContentWidth()
+          ) {
+            Text("目标端口类型")
+            Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+              RadioButton(selected = isNettyTarget, onClick = { isNettyTarget = true })
+              Text("Netty")
+              RadioButton(selected = !isNettyTarget, onClick = { isNettyTarget = false })
+              Text("Kafka")
             }
-            AnimatedVisibility(!isStartButtonEnabled) {
-              OutlinedButton(
+
+            Text("地址")
+            OutlinedTextField(value = host, onValueChange = {
+              host = it
+            }, label = { Text("例如：127.0.0.1") })
+
+            Text("端口")
+            OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("例如：9999") })
+
+            if (!isNettyTarget) {
+              Text("Topic")
+              OutlinedTextField(value = topic, onValueChange = { topic = it }, label = { Text("例如：Topic1") })
+            }
+
+            Row {
+              Button(
                 onClick = {
-                  job?.cancel()
+                  isStartButtonEnabled = false
+                  data?.let {
+                    val firstTaskTime = it.keys.first()
+                    val baseTime = LocalDateTime.now()
+
+                    val tasks = data!!.map { entry ->
+                      val durationLong =
+                        (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
+                      val durationWithSpeed =
+                        Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
+                      if (isNettyTarget) {
+                        NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
+                      } else {
+                        KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
+                      }
+                    }
+
+                    job = scope.launch {
+                      tasks.forEach { task ->
+                        task.run { content ->
+                          logs = logs + "${task.time}:$content"
+                        }
+                      }
+                    }
+                    job?.let { job ->
+                      job.invokeOnCompletion(true) {
+                        if (
+                          job.status() == JobStatus.COMPLETED ||
+                          job.status() == JobStatus.CANCELLED ||
+                          job.status() == JobStatus.CANCELLING
+                        ) {
+                          isStartButtonEnabled = true
+                        }
+                      }
+                    }
+                  }
                 },
-                modifier = Modifier.padding(start = 4.dp)
+                enabled = isStartButtonEnabled
               ) {
-                Text("取消")
+                Text("开始发送")
+              }
+              AnimatedVisibility(!isStartButtonEnabled) {
+                OutlinedButton(
+                  onClick = {
+                    job?.cancel()
+                  },
+                  modifier = Modifier.padding(start = 4.dp)
+                ) {
+                  Text("取消")
+                }
               }
             }
-          }
 
-          Divider(Modifier.height(2.dp).width(300.dp))
+            Divider(Modifier.height(2.dp).width(300.dp))
 
-          Text("发送日志")
-          LazyColumn(modifier = Modifier.height(200.dp)) {
-            items(logs) { log ->
-              Text(log)
+            Text("发送日志")
+            LazyColumn(modifier = Modifier.height(200.dp)) {
+              items(logs) { log ->
+                Text(log)
+              }
             }
           }
         }
