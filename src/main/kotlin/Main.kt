@@ -86,108 +86,127 @@ fun App() {
         .background(MaterialTheme.colors.background)
         .padding(16.dp)
     ) {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Row(
+        modifier = Modifier
+          .fillMaxSize(),
+        horizontalArrangement = Arrangement.SpaceAround
+      ) {
+        Column(
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+          modifier = Modifier.wrapContentWidth()
+        ) {
 
-        AnimatedVisibility(error.isNotEmpty()) {
-          Text(error,
-            modifier = Modifier
-              .fillMaxWidth()
-              .border(2.dp, MaterialTheme.colors.error, RoundedCornerShape(50))
-              .padding(16.dp)
-          )
-        }
+          AnimatedVisibility(error.isNotEmpty()) {
+            Text(error,
+              modifier = Modifier
+                .widthIn(max = 300.dp)
+                .border(2.dp, MaterialTheme.colors.error, RoundedCornerShape(50))
+                .padding(16.dp)
+            )
+          }
 
-        Text("获取时间方式")
-        Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-          RadioButton(selected = isGetTimeAutomatically, onClick = { isGetTimeAutomatically = true })
-          Text("自动")
-          RadioButton(selected = !isGetTimeAutomatically, onClick = { isGetTimeAutomatically = false })
-          Text("手动指定时间列")
-        }
-        AnimatedVisibility(!isGetTimeAutomatically) {
-          OutlinedTextField(
-            value = dateIndex,
-            onValueChange = { value ->
-              if (value.length <= 2) {
-                dateIndex = value.filter { it.isDigit() }
+          Text("获取时间方式")
+          Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(selected = isGetTimeAutomatically, onClick = { isGetTimeAutomatically = true })
+            Text("自动")
+            RadioButton(selected = !isGetTimeAutomatically, onClick = { isGetTimeAutomatically = false })
+            Text("手动指定时间列")
+          }
+          AnimatedVisibility(!isGetTimeAutomatically) {
+            OutlinedTextField(
+              value = dateIndex,
+              onValueChange = { value ->
+                if (value.length <= 2) {
+                  dateIndex = value.filter { it.isDigit() }
+                }
+              }
+            )
+          }
+
+          Text("选择需要发送的文件")
+          AnimatedVisibility(selectedFilePath.isNotEmpty()) {
+            Text(selectedFilePath, modifier = Modifier.widthIn(max = 300.dp))
+          }
+          OutlinedButton(onClick = {
+            isFileChooserOpen = true
+          }, modifier = Modifier.padding(horizontal = 8.dp)) {
+            Text("选择")
+          }
+
+          Text("回放速度")
+          Column(Modifier.selectableGroup()) {
+            playSpeed.forEachIndexed { index, s ->
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = playSpeedIndex == index, onClick = { playSpeedIndex = index })
+                Text(s)
               }
             }
-          )
-        }
-
-        Text("选择需要发送的文件: $selectedFilePath")
-        OutlinedButton(onClick = {
-          isFileChooserOpen = true
-        }, modifier = Modifier.padding(horizontal = 8.dp)) {
-          Text("选择")
-        }
-
-        Text("回放速度")
-        Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-          playSpeed.forEachIndexed { index, s ->
-            RadioButton(selected = playSpeedIndex == index, onClick = { playSpeedIndex = index })
-            Text(s)
           }
         }
 
-        Text("目标端口类型")
-        Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-          RadioButton(selected = isNettyTarget, onClick = { isNettyTarget = true })
-          Text("Netty")
-          RadioButton(selected = !isNettyTarget, onClick = { isNettyTarget = false })
-          Text("Kafka")
-        }
+        Column(
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+          modifier = Modifier.wrapContentWidth()
+        ) {
+          Text("目标端口类型")
+          Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(selected = isNettyTarget, onClick = { isNettyTarget = true })
+            Text("Netty")
+            RadioButton(selected = !isNettyTarget, onClick = { isNettyTarget = false })
+            Text("Kafka")
+          }
 
-        Text("地址")
-        OutlinedTextField(value = host, onValueChange = {
-          host = it
-        }, label = { Text("例如：127.0.0.1") })
+          Text("地址")
+          OutlinedTextField(value = host, onValueChange = {
+            host = it
+          }, label = { Text("例如：127.0.0.1") })
 
-        Text("端口")
-        OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("例如：9999") })
+          Text("端口")
+          OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("例如：9999") })
 
-        if (!isNettyTarget) {
-          Text("Topic")
-          OutlinedTextField(value = topic, onValueChange = { topic = it }, label = { Text("例如：Topic1") })
-        }
+          if (!isNettyTarget) {
+            Text("Topic")
+            OutlinedTextField(value = topic, onValueChange = { topic = it }, label = { Text("例如：Topic1") })
+          }
 
-        Button(
-          onClick = {
-            data?.let {
-              val firstTaskTime = it.keys.first()
-              val baseTime = LocalDateTime.now()
+          Button(
+            onClick = {
+              data?.let {
+                val firstTaskTime = it.keys.first()
+                val baseTime = LocalDateTime.now()
 
-              val tasks = data!!.map { entry ->
-                val durationLong =
-                  (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
-                val durationWithSpeed = Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
-                if (isNettyTarget) {
-                  NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
-                } else {
-                  KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
+                val tasks = data!!.map { entry ->
+                  val durationLong =
+                    (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
+                  val durationWithSpeed = Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
+                  if (isNettyTarget) {
+                    NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
+                  } else {
+                    KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
+                  }
                 }
-              }
 
-              scope.launch {
-                tasks.forEach { task ->
-                  task.run { content ->
-                    logs = logs + "${task.time}:$content"
+                scope.launch {
+                  tasks.forEach { task ->
+                    task.run { content ->
+                      logs = logs + "${task.time}:$content"
+                    }
                   }
                 }
               }
+            },
+            enabled = !data.isNullOrEmpty() && host.isNotEmpty() && port.isNotEmpty()
+          ) {
+            Text("开始发送")
+          }
+
+          Divider(Modifier.height(2.dp).width(300.dp))
+
+          Text("发送日志")
+          LazyColumn(modifier = Modifier.height(200.dp)) {
+            items(logs) { log ->
+              Text(log)
             }
-          },
-          enabled = !data.isNullOrEmpty() && host.isNotEmpty() && port.isNotEmpty()
-        ) {
-          Text("开始发送")
-        }
-
-        Divider(Modifier.height(2.dp))
-
-        Text("发送日志")
-        LazyColumn(modifier = Modifier.height(200.dp)) {
-          items(logs) { log ->
-            Text(log)
           }
         }
       }
@@ -211,11 +230,10 @@ fun FileDialog(
 }, dispose = FileDialog::dispose)
 
 fun main() = application {
-  val windowState = rememberWindowState(width = 600.dp, height = 800.dp)
+  val windowState = rememberWindowState(height = 650.dp)
   Window(
     title = "数据回放系统",
     state = windowState,
-    resizable = false,
     onCloseRequest = ::exitApplication
   ) {
     App()
