@@ -11,7 +11,7 @@ object KafkaProducer {
 
   private var producer: Producer<String, String>? = null
 
-  fun isProducerExist() = producer == null
+  fun isProducerNotExist() = producer == null
 
   fun createProducer(server: String) {
     val props = Properties()
@@ -25,4 +25,21 @@ object KafkaProducer {
     producer?.send(ProducerRecord(topic, key.toString(), msg.toString()))
   }
 
+}
+
+
+private fun createProducer(): Producer<String, String> {
+  val props = Properties()
+  props["bootstrap.servers"] = "localhost:9092"
+  props["key.serializer"] = StringSerializer::class.java
+  props["value.serializer"] = StringSerializer::class.java
+  return KafkaProducer(props)
+}
+
+fun main() {
+  val producer = createProducer()
+  for (i in 0..4) {
+    val future = producer.send(ProducerRecord("Topic1", i.toString(), "Hello world $i"))
+    future.get()
+  }
 }

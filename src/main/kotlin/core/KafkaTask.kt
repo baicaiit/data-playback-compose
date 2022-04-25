@@ -20,7 +20,7 @@ class KafkaTask(
       val delays = calculateDelayTime(baseTime, time)
       println("basetime $baseTime task $time delay $delays")
       delay(delays)
-      if (KafkaProducer.isProducerExist()) {
+      if (KafkaProducer.isProducerNotExist()) {
         KafkaProducer.createProducer("$host:$port")
       }
       KafkaProducer.sendMsg(topic, time, content)
