@@ -18,6 +18,8 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import core.KafkaTask
 import core.NettyTask
+import kotlinx.coroutines.InternalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException
 import utils.NoValidTimeException
@@ -30,9 +32,29 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
-val playSpeed = listOf("0.1倍速", "0.5倍速", "1倍速", "5倍速", "10倍速")
-val magnification = listOf(10.0, 2.0, 1.0, 0.2, 0.1)
+val playSpeed = listOf("0.1倍速", "0.5倍速", "1倍速", "5倍速", "10倍速", "1000倍速")
+val magnification = listOf(10.0, 2.0, 1.0, 0.2, 0.1, 0.001)
 
+enum class JobStatus {
+  NEW,
+  ACTIVE,
+  CANCELLING,
+  CANCELLED,
+  COMPLETED
+}
+
+fun Job.status(): JobStatus {
+  println("job status: isActive $isActive isCompleted $isCompleted isCancelled $isCancelled")
+  return when {
+    !isActive && isCompleted && !isCancelled -> JobStatus.COMPLETED
+    !isActive && isCompleted && isCancelled -> JobStatus.CANCELLED
+    !isActive && !isCompleted && isCancelled -> JobStatus.CANCELLING
+    isActive && !isCompleted && isCancelled -> JobStatus.ACTIVE
+    else -> JobStatus.NEW
+  }
+}
+
+@OptIn(InternalCoroutinesApi::class)
 @Composable
 @Preview
 fun App() {
@@ -48,6 +70,8 @@ fun App() {
   var topic by remember { mutableStateOf("Topic1") }
   var logs by remember { mutableStateOf(listOf<String>()) }
   var data by remember { mutableStateOf<Map<LocalDateTime, List<String>>?>(HashMap()) }
+  var job by remember { mutableStateOf<Job?>(null) }
+  var isStartButtonEnabled by remember { mutableStateOf(true) }
 
   var isFileChooserOpen by remember { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
@@ -70,6 +94,7 @@ fun App() {
           }
           is TimeIndexOutOfIndexException -> e.msg
           is TimeIndexNotValidException -> e.msg
+          is NullPointerException -> "请检查上传的文件，确保不含空值"
           else -> {
             e.printStackTrace()
             "未知错误"
@@ -169,35 +194,59 @@ fun App() {
             OutlinedTextField(value = topic, onValueChange = { topic = it }, label = { Text("例如：Topic1") })
           }
 
-          Button(
-            onClick = {
-              data?.let {
-                val firstTaskTime = it.keys.first()
-                val baseTime = LocalDateTime.now()
+          Row {
+            Button(
+              onClick = {
+                isStartButtonEnabled = false
+                data?.let {
+                  val firstTaskTime = it.keys.first()
+                  val baseTime = LocalDateTime.now()
 
-                val tasks = data!!.map { entry ->
-                  val durationLong =
-                    (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
-                  val durationWithSpeed = Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
-                  if (isNettyTarget) {
-                    NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
-                  } else {
-                    KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
+                  val tasks = data!!.map { entry ->
+                    val durationLong =
+                      (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
+                    val durationWithSpeed = Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
+                    if (isNettyTarget) {
+                      NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
+                    } else {
+                      KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
+                    }
                   }
-                }
 
-                scope.launch {
-                  tasks.forEach { task ->
-                    task.run { content ->
-                      logs = logs + "${task.time}:$content"
+                  job = scope.launch {
+                    tasks.forEach { task ->
+                      task.run { content ->
+                        logs = logs + "${task.time}:$content"
+                      }
+                    }
+                  }
+                  job?.let { job ->
+                    job.invokeOnCompletion(true) {
+                      if (
+                        job.status() == JobStatus.COMPLETED ||
+                        job.status() == JobStatus.CANCELLED ||
+                        job.status() == JobStatus.CANCELLING
+                      ) {
+                        isStartButtonEnabled = true
+                      }
                     }
                   }
                 }
+              },
+              enabled = isStartButtonEnabled
+            ) {
+              Text("开始发送")
+            }
+            AnimatedVisibility(!isStartButtonEnabled) {
+              OutlinedButton(
+                onClick = {
+                  job?.cancel()
+                },
+                modifier = Modifier.padding(start = 4.dp)
+              ) {
+                Text("取消")
               }
-            },
-            enabled = !data.isNullOrEmpty() && host.isNotEmpty() && port.isNotEmpty()
-          ) {
-            Text("开始发送")
+            }
           }
 
           Divider(Modifier.height(2.dp).width(300.dp))

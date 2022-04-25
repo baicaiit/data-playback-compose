@@ -21,10 +21,12 @@ fun String.redExcel(
   for (i in 0 until sheetNum) {
     val sheet = xssfWorkbook.getSheetAt(i)
     val maxRow = sheet.lastRowNum
+    println("表格共有$maxRow 行")
     for (row in 1..maxRow) {
       var dateFlag = false
       val content = ArrayList<String>()
       val maxCol = sheet.getRow(row).lastCellNum.toInt()
+      println("表格共有$maxCol 列")
       if (dateIndex >= maxCol) {
         throw TimeIndexOutOfIndexException("所选时间列号不存在")
       }
