@@ -57,24 +57,34 @@ fun Job.status(): JobStatus {
 @Preview
 fun App() {
 
+  // 界面状态
+  var isFileChooserOpen by remember { mutableStateOf(false) }
+  var isStartButtonEnabled by remember { mutableStateOf(true) }
+  val scaffoldState = rememberScaffoldState()
   var error by remember { mutableStateOf("") }
-  var selectedFilePath by remember { mutableStateOf("") }
+
+  // 数据状态
   var isGetTimeAutomatically by remember { mutableStateOf(true) }
   var dateColIndex by remember { mutableStateOf("") }
+
   var startRowIndex by remember { mutableStateOf("") }
   var endRowIndex by remember { mutableStateOf("") }
-  var isNettyTarget by remember { mutableStateOf(true) }
+
+  var selectedFilePath by remember { mutableStateOf("") }
+  var data by remember { mutableStateOf<Map<LocalDateTime, List<String>>?>(null) }
+
   var playSpeedIndex by remember { mutableStateOf(2) }
+
+  var isNettyTarget by remember { mutableStateOf(true) }
+
   var host by remember { mutableStateOf("127.0.0.1") }
   var port by remember { mutableStateOf("9999") }
   var topic by remember { mutableStateOf("Topic1") }
+
   var logs by remember { mutableStateOf(listOf<String>()) }
-  var data by remember { mutableStateOf<Map<LocalDateTime, List<String>>?>(null) }
-  var job by remember { mutableStateOf<Job?>(null) }
-  var isStartButtonEnabled by remember { mutableStateOf(true) }
-  val scaffoldState = rememberScaffoldState()
-  var isFileChooserOpen by remember { mutableStateOf(false) }
+
   val scope = rememberCoroutineScope()
+  var job by remember { mutableStateOf<Job?>(null) }
 
   fun getSubmitState(): Boolean {
     if (data == null) return false
