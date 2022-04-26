@@ -15,128 +15,35 @@ import androidx.compose.ui.window.AwtWindow
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import core.KafkaTask
-import core.NettyTask
-import kotlinx.coroutines.InternalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException
-import utils.NoValidTimeException
-import utils.TimeIndexNotValidException
-import utils.TimeIndexOutOfIndexException
-import utils.redExcel
+import state.rememberHomeWindowState
 import java.awt.FileDialog
 import java.awt.Frame
-import java.time.Duration
-import java.time.LocalDateTime
-import java.time.ZoneOffset
 
 val playSpeed = listOf("0.1倍速", "0.5倍速", "1倍速", "10倍速", "100倍速")
-val magnification = listOf(10.0, 2.0, 1.0, 0.1, 0.01)
 
-enum class JobStatus {
-  NEW,
-  ACTIVE,
-  CANCELLING,
-  CANCELLED,
-  COMPLETED
-}
-
-fun Job.status(): JobStatus {
-  println("job status: isActive $isActive isCompleted $isCompleted isCancelled $isCancelled")
-  return when {
-    !isActive && isCompleted && !isCancelled -> JobStatus.COMPLETED
-    !isActive && isCompleted && isCancelled -> JobStatus.CANCELLED
-    !isActive && !isCompleted && isCancelled -> JobStatus.CANCELLING
-    isActive && !isCompleted && isCancelled -> JobStatus.ACTIVE
-    else -> JobStatus.NEW
-  }
-}
-
-@OptIn(InternalCoroutinesApi::class)
 @Composable
 @Preview
 fun App() {
 
-  // 界面状态
+  val homeWindowState = rememberHomeWindowState()
+
   var isFileChooserOpen by remember { mutableStateOf(false) }
-  var isStartButtonEnabled by remember { mutableStateOf(true) }
-  val scaffoldState = rememberScaffoldState()
-  var error by remember { mutableStateOf("") }
-
-  // 数据状态
-  var isGetTimeAutomatically by remember { mutableStateOf(true) }
-  var dateColIndex by remember { mutableStateOf("") }
-
-  var startRowIndex by remember { mutableStateOf("") }
-  var endRowIndex by remember { mutableStateOf("") }
-
-  var selectedFilePath by remember { mutableStateOf("") }
-  var data by remember { mutableStateOf<Map<LocalDateTime, List<String>>?>(null) }
-
-  var playSpeedIndex by remember { mutableStateOf(2) }
-
-  var isNettyTarget by remember { mutableStateOf(true) }
-
-  var host by remember { mutableStateOf("127.0.0.1") }
-  var port by remember { mutableStateOf("9999") }
-  var topic by remember { mutableStateOf("Topic1") }
-
-  var logs by remember { mutableStateOf(listOf<String>()) }
-
-  val scope = rememberCoroutineScope()
-  var job by remember { mutableStateOf<Job?>(null) }
-
-  fun getSubmitState(): Boolean {
-    if (data == null) return false
-    if (host.isEmpty()) return false
-    if (port.isEmpty()) return false
-    if (!isNettyTarget && topic.isEmpty()) return false
-    return true
-  }
 
   if (isFileChooserOpen) {
     FileDialog(onCloseRequest = { filePath ->
       isFileChooserOpen = false
-      try {
-        data = filePath?.redExcel(
-          dateColIndex = if (isGetTimeAutomatically) -1 else dateColIndex.toInt() - 1,
-          startRowIndex = if (startRowIndex.isNotEmpty()) startRowIndex.toInt() - 1 else 0,
-          endRowIndex = if (endRowIndex.isNotEmpty()) endRowIndex.toInt() - 1 else Int.MAX_VALUE
-        )
-        println(data)
-        selectedFilePath = filePath ?: ""
-        error = ""
-      } catch (e: Exception) {
-        data = null
-        selectedFilePath = ""
-        error = when (e) {
-          is NoValidTimeException -> e.msg
-          is NotOfficeXmlFileException -> {
-            "所选文件并非有效 excel 文件"
-          }
-          is TimeIndexOutOfIndexException -> e.msg
-          is TimeIndexNotValidException -> e.msg
-          is NullPointerException -> "请检查上传的文件，确保不含空值"
-          else -> {
-            e.printStackTrace()
-            "未知错误 ${e.message}"
-          }
-        }
-      }
+      homeWindowState.onReadExcel(filePath)
     })
   }
 
-  if (error.isNotEmpty()) {
-    LaunchedEffect(scaffoldState.snackbarHostState) {
-      scaffoldState.snackbarHostState.showSnackbar(error)
-    }
+  LaunchedEffect(homeWindowState.scaffoldState.snackbarHostState) {
+    homeWindowState.showErrorMsg()
   }
 
   MaterialTheme(
     colors = if (isSystemInDarkTheme()) ui.darkColors else ui.lightColors
   ) {
-    Scaffold(scaffoldState = scaffoldState) {
+    Scaffold(scaffoldState = homeWindowState.scaffoldState) {
       Box(
         modifier = Modifier
           .fillMaxSize()
@@ -155,17 +62,23 @@ fun App() {
 
             Text("获取时间方式")
             Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-              RadioButton(selected = isGetTimeAutomatically, onClick = { isGetTimeAutomatically = true })
+              RadioButton(
+                selected = homeWindowState.isGetTimeAutomatically,
+                onClick = { homeWindowState.isGetTimeAutomatically = true }
+              )
               Text("自动")
-              RadioButton(selected = !isGetTimeAutomatically, onClick = { isGetTimeAutomatically = false })
+              RadioButton(
+                selected = !homeWindowState.isGetTimeAutomatically,
+                onClick = { homeWindowState.isGetTimeAutomatically = false }
+              )
               Text("手动指定时间列")
             }
-            AnimatedVisibility(!isGetTimeAutomatically) {
+            AnimatedVisibility(!homeWindowState.isGetTimeAutomatically) {
               OutlinedTextField(
-                value = dateColIndex,
+                value = homeWindowState.dateColIndex,
                 onValueChange = { value ->
                   if (value.length <= 2) {
-                    dateColIndex = value.filter { it.isDigit() }
+                    homeWindowState.dateColIndex = value.filter { it.isDigit() }
                   }
                 }
               )
@@ -174,27 +87,27 @@ fun App() {
             Text("请输入起始行号和终止行号，默认发送全部数据")
 
             OutlinedTextField(
-              value = startRowIndex,
+              value = homeWindowState.startRowIndex,
               onValueChange = { value ->
                 if (value.length <= 2) {
-                  startRowIndex = value.filter { it.isDigit() }
+                  homeWindowState.startRowIndex = value.filter { it.isDigit() }
                 }
               },
               label = { Text("起始行") }
             )
             OutlinedTextField(
-              value = endRowIndex,
+              value = homeWindowState.endRowIndex,
               onValueChange = { value ->
                 if (value.length <= 2) {
-                  endRowIndex = value.filter { it.isDigit() }
+                  homeWindowState.endRowIndex = value.filter { it.isDigit() }
                 }
               },
               label = { Text("终止行") }
             )
 
             Text("选择需要发送的文件")
-            AnimatedVisibility(selectedFilePath.isNotEmpty()) {
-              Text(selectedFilePath)
+            AnimatedVisibility(homeWindowState.selectedFilePath.isNotEmpty()) {
+              Text(homeWindowState.selectedFilePath)
             }
             OutlinedButton(onClick = {
               isFileChooserOpen = true
@@ -206,7 +119,10 @@ fun App() {
             Column(Modifier.selectableGroup()) {
               playSpeed.forEachIndexed { index, s ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                  RadioButton(selected = playSpeedIndex == index, onClick = { playSpeedIndex = index })
+                  RadioButton(
+                    selected = homeWindowState.playSpeedIndex == index,
+                    onClick = { homeWindowState.playSpeedIndex = index }
+                  )
                   Text(s)
                 }
               }
@@ -219,73 +135,54 @@ fun App() {
           ) {
             Text("目标端口类型")
             Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-              RadioButton(selected = isNettyTarget, onClick = { isNettyTarget = true })
+              RadioButton(
+                selected = homeWindowState.isNettyTarget,
+                onClick = { homeWindowState.isNettyTarget = true }
+              )
               Text("Netty")
-              RadioButton(selected = !isNettyTarget, onClick = { isNettyTarget = false })
+              RadioButton(
+                selected = !homeWindowState.isNettyTarget,
+                onClick = { homeWindowState.isNettyTarget = false }
+              )
               Text("Kafka")
             }
 
             Text("地址")
-            OutlinedTextField(value = host, onValueChange = {
-              host = it
-            }, label = { Text("例如：127.0.0.1") })
+            OutlinedTextField(
+              value = homeWindowState.host,
+              onValueChange = {
+                homeWindowState.host = it
+              },
+              label = { Text("例如：127.0.0.1") }
+            )
 
             Text("端口")
-            OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("例如：9999") })
+            OutlinedTextField(
+              value = homeWindowState.port,
+              onValueChange = { homeWindowState.port = it },
+              label = { Text("例如：9999") }
+            )
 
-            if (!isNettyTarget) {
+            if (!homeWindowState.isNettyTarget) {
               Text("Topic")
-              OutlinedTextField(value = topic, onValueChange = { topic = it }, label = { Text("例如：Topic1") })
+              OutlinedTextField(value = homeWindowState.topic,
+                onValueChange = { homeWindowState.topic = it },
+                label = { Text("例如：Topic1") })
             }
 
             Row {
               Button(
                 onClick = {
-                  isStartButtonEnabled = false
-                  data?.let {
-                    val firstTaskTime = it.keys.first()
-                    val baseTime = LocalDateTime.now()
-
-                    val tasks = data!!.map { entry ->
-                      val durationLong =
-                        (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
-                      val durationWithSpeed =
-                        Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
-                      if (isNettyTarget) {
-                        NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
-                      } else {
-                        KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
-                      }
-                    }
-
-                    job = scope.launch {
-                      tasks.forEach { task ->
-                        task.run { content ->
-                          logs = logs + "${task.time}:$content"
-                        }
-                      }
-                    }
-                    job?.let { job ->
-                      job.invokeOnCompletion(true) {
-                        if (
-                          job.status() == JobStatus.COMPLETED ||
-                          job.status() == JobStatus.CANCELLED ||
-                          job.status() == JobStatus.CANCELLING
-                        ) {
-                          isStartButtonEnabled = true
-                        }
-                      }
-                    }
-                  }
+                  homeWindowState.onDataSend()
                 },
-                enabled = isStartButtonEnabled && getSubmitState()
+                enabled = homeWindowState.isStartButtonEnabled && homeWindowState.getSubmitState()
               ) {
                 Text("开始发送")
               }
-              AnimatedVisibility(!isStartButtonEnabled) {
+              AnimatedVisibility(!homeWindowState.isStartButtonEnabled) {
                 OutlinedButton(
                   onClick = {
-                    job?.cancel()
+                    homeWindowState.onDataSendCancel()
                   },
                   modifier = Modifier.padding(start = 4.dp)
                 ) {
@@ -298,7 +195,7 @@ fun App() {
 
             Text("发送日志")
             LazyColumn(modifier = Modifier.height(200.dp)) {
-              items(logs) { log ->
+              items(homeWindowState.logs) { log ->
                 Text(log)
               }
             }
