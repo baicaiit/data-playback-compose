@@ -80,7 +80,7 @@ class HomeWindowState(
     return true
   }
 
-  fun onReadExcel(filePath: String?) {
+  fun onReadExcel(filePath: String?): Boolean {
     try {
       data = filePath?.redExcel(
         dateColIndex = if (isGetTimeAutomatically) -1 else dateColIndex.toInt() - 1,
@@ -90,6 +90,7 @@ class HomeWindowState(
       println(data)
       selectedFilePath = filePath ?: ""
       error = ""
+      return true
     } catch (e: Exception) {
       data = null
       selectedFilePath = ""
@@ -106,6 +107,7 @@ class HomeWindowState(
           "未知错误 ${e.message}"
         }
       }
+      return false
     }
   }
 

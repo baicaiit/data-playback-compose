@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import state.HomeWindowState
 import state.rememberHomeWindowState
-import ui.area.FileForm
+import ui.component.FileForm
 import ui.component.RadioGroup
 import utils.onlyReturnNumber
 
@@ -47,7 +47,11 @@ fun HomePage(
 
           TimeForm(homeWindowState)
           RowIndexForm(homeWindowState)
-          FileForm(homeWindowState)
+          FileForm(
+            onFileSelected = {
+              homeWindowState.onReadExcel(it)
+            }
+          )
 
           RadioGroup(
             title = "回放速度",

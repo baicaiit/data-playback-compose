@@ -1,4 +1,4 @@
-package ui.area
+package ui.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.padding
@@ -8,26 +8,32 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.AwtWindow
-import state.HomeWindowState
 import java.awt.FileDialog
 import java.awt.Frame
 
 @Composable
-fun FileForm(homeWindowState: HomeWindowState) {
+fun FileForm(
+  onFileSelected: (result: String?) -> Boolean,
+) {
   var isFileChooserOpen by remember { mutableStateOf(false) }
+  var selectedFilePath by remember { mutableStateOf("") }
 
   if (isFileChooserOpen) {
     FileDialog(
-      onCloseRequest = {
+      onCloseRequest = { path ->
         isFileChooserOpen = false
-        homeWindowState.onReadExcel(it)
+        path?.let {
+          if (onFileSelected(it)) {
+            selectedFilePath = it
+          }
+        }
       }
     )
   }
 
   Text("选择需要发送的文件")
-  AnimatedVisibility(homeWindowState.selectedFilePath.isNotEmpty()) {
-    Text(homeWindowState.selectedFilePath)
+  AnimatedVisibility(selectedFilePath.isNotEmpty()) {
+    Text(selectedFilePath)
   }
   OutlinedButton(
     onClick = { isFileChooserOpen = true },
