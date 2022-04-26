@@ -44,7 +44,7 @@ fun FileForm(
 }
 
 @Composable
-fun FileDialog(
+private fun FileDialog(
   parent: Frame? = null,
   onCloseRequest: (result: String?) -> Unit,
 ) = AwtWindow(

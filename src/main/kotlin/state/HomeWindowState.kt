@@ -1,4 +1,4 @@
-package state;
+package state
 
 import androidx.compose.material.ScaffoldState
 import androidx.compose.material.rememberScaffoldState
@@ -56,7 +56,6 @@ class HomeWindowState(
   var startRowIndex by mutableStateOf("")
   var endRowIndex by mutableStateOf("")
 
-  var selectedFilePath by mutableStateOf("")
   var data by mutableStateOf<Map<LocalDateTime, List<String>>?>(null)
 
   var playSpeedIndex by mutableStateOf(2)
@@ -88,12 +87,10 @@ class HomeWindowState(
         endRowIndex = if (endRowIndex.isNotEmpty()) endRowIndex.toInt() - 1 else Int.MAX_VALUE
       )
       println(data)
-      selectedFilePath = filePath ?: ""
       error = ""
       return true
     } catch (e: Exception) {
       data = null
-      selectedFilePath = ""
       error = when (e) {
         is NoValidTimeException -> e.msg
         is NotOfficeXmlFileException -> {
