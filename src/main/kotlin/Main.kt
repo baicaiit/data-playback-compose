@@ -15,7 +15,10 @@ import androidx.compose.ui.window.AwtWindow
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import state.HomeWindowState
 import state.rememberHomeWindowState
+import ui.component.RadioGroup
+import utils.onlyReturnNumber
 import java.awt.FileDialog
 import java.awt.Frame
 
@@ -23,181 +26,162 @@ val playSpeed = listOf("0.1倍速", "0.5倍速", "1倍速", "10倍速", "100倍�
 
 @Composable
 @Preview
-fun App() {
-
-  val homeWindowState = rememberHomeWindowState()
+fun App(
+  homeWindowState: HomeWindowState = rememberHomeWindowState(),
+) {
 
   var isFileChooserOpen by remember { mutableStateOf(false) }
 
   if (isFileChooserOpen) {
-    FileDialog(onCloseRequest = { filePath ->
-      isFileChooserOpen = false
-      homeWindowState.onReadExcel(filePath)
-    })
+    FileDialog(
+      onCloseRequest = {
+        isFileChooserOpen = false
+        homeWindowState.onReadExcel(it)
+      }
+    )
   }
 
-  LaunchedEffect(homeWindowState.scaffoldState.snackbarHostState) {
+  LaunchedEffect(homeWindowState.error) {
     homeWindowState.showErrorMsg()
   }
 
-  MaterialTheme(
-    colors = if (isSystemInDarkTheme()) ui.darkColors else ui.lightColors
+  Scaffold(
+    scaffoldState = homeWindowState.scaffoldState
   ) {
-    Scaffold(scaffoldState = homeWindowState.scaffoldState) {
-      Box(
-        modifier = Modifier
-          .fillMaxSize()
-          .background(MaterialTheme.colors.surface)
-          .padding(16.dp)
+    Box(
+      modifier = Modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colors.surface)
+        .padding(16.dp)
+    ) {
+      Row(
+        modifier = Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.SpaceAround
       ) {
-        Row(
-          modifier = Modifier
-            .fillMaxSize(),
-          horizontalArrangement = Arrangement.SpaceAround
+        Column(
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+          modifier = Modifier.wrapContentWidth().widthIn(max = 300.dp)
         ) {
-          Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.wrapContentWidth().widthIn(max = 300.dp)
-          ) {
 
-            Text("获取时间方式")
-            Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-              RadioButton(
-                selected = homeWindowState.isGetTimeAutomatically,
-                onClick = { homeWindowState.isGetTimeAutomatically = true }
-              )
-              Text("自动")
-              RadioButton(
-                selected = !homeWindowState.isGetTimeAutomatically,
-                onClick = { homeWindowState.isGetTimeAutomatically = false }
-              )
-              Text("手动指定时间列")
+          RadioGroup(
+            title = "获取时间方式",
+            options = listOf("自动", "手动指定时间列"),
+            selectedIndex = if (homeWindowState.isGetTimeAutomatically) 0 else 1,
+            onSelectedChanged = { index ->
+              homeWindowState.isGetTimeAutomatically = index == 0
             }
-            AnimatedVisibility(!homeWindowState.isGetTimeAutomatically) {
-              OutlinedTextField(
-                value = homeWindowState.dateColIndex,
-                onValueChange = { value ->
-                  if (value.length <= 2) {
-                    homeWindowState.dateColIndex = value.filter { it.isDigit() }
-                  }
-                }
-              )
-            }
+          )
 
-            Text("请输入起始行号和终止行号，默认发送全部数据")
-
+          AnimatedVisibility(!homeWindowState.isGetTimeAutomatically) {
             OutlinedTextField(
-              value = homeWindowState.startRowIndex,
+              value = homeWindowState.dateColIndex,
               onValueChange = { value ->
-                if (value.length <= 2) {
-                  homeWindowState.startRowIndex = value.filter { it.isDigit() }
-                }
-              },
-              label = { Text("起始行") }
+                homeWindowState.dateColIndex = value.onlyReturnNumber()
+              }
             )
-            OutlinedTextField(
-              value = homeWindowState.endRowIndex,
-              onValueChange = { value ->
-                if (value.length <= 2) {
-                  homeWindowState.endRowIndex = value.filter { it.isDigit() }
-                }
+          }
+
+          Text("请输入起始行号和终止行号，默认发送全部数据")
+
+          OutlinedTextField(
+            value = homeWindowState.startRowIndex,
+            onValueChange = { value ->
+              homeWindowState.startRowIndex = value.onlyReturnNumber()
+            },
+            label = { Text("起始行") }
+          )
+          OutlinedTextField(
+            value = homeWindowState.endRowIndex,
+            onValueChange = { value ->
+              homeWindowState.endRowIndex = value.onlyReturnNumber()
+            },
+            label = { Text("终止行") }
+          )
+
+          Text("选择需要发送的文件")
+          AnimatedVisibility(homeWindowState.selectedFilePath.isNotEmpty()) {
+            Text(homeWindowState.selectedFilePath)
+          }
+          OutlinedButton(onClick = {
+            isFileChooserOpen = true
+          }, modifier = Modifier.padding(horizontal = 8.dp)) {
+            Text("选择")
+          }
+
+          RadioGroup(
+            title = "回放速度",
+            options = playSpeed,
+            selectedIndex = homeWindowState.playSpeedIndex,
+            onSelectedChanged = { index ->
+              homeWindowState.playSpeedIndex = index
+            },
+            isHorizontal = false
+          )
+        }
+
+        Column(
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+          modifier = Modifier.wrapContentWidth()
+        ) {
+          RadioGroup(
+            title = "目标端口类型",
+            options = listOf("Netty", "Kafka"),
+            selectedIndex = if (homeWindowState.isNettyTarget) 0 else 1,
+            onSelectedChanged = { index ->
+              homeWindowState.isNettyTarget = index == 0
+            }
+          )
+
+          Text("地址")
+          OutlinedTextField(
+            value = homeWindowState.host,
+            onValueChange = {
+              homeWindowState.host = it
+            },
+            label = { Text("例如：127.0.0.1") }
+          )
+
+          Text("端口")
+          OutlinedTextField(
+            value = homeWindowState.port,
+            onValueChange = { homeWindowState.port = it },
+            label = { Text("例如：9999") }
+          )
+
+          if (!homeWindowState.isNettyTarget) {
+            Text("Topic")
+            OutlinedTextField(value = homeWindowState.topic,
+              onValueChange = { homeWindowState.topic = it },
+              label = { Text("例如：Topic1") })
+          }
+
+          Row {
+            Button(
+              onClick = {
+                homeWindowState.onDataSend()
               },
-              label = { Text("终止行") }
-            )
-
-            Text("选择需要发送的文件")
-            AnimatedVisibility(homeWindowState.selectedFilePath.isNotEmpty()) {
-              Text(homeWindowState.selectedFilePath)
+              enabled = homeWindowState.isStartButtonEnabled && homeWindowState.getSubmitState()
+            ) {
+              Text("开始发送")
             }
-            OutlinedButton(onClick = {
-              isFileChooserOpen = true
-            }, modifier = Modifier.padding(horizontal = 8.dp)) {
-              Text("选择")
-            }
-
-            Text("回放速度")
-            Column(Modifier.selectableGroup()) {
-              playSpeed.forEachIndexed { index, s ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                  RadioButton(
-                    selected = homeWindowState.playSpeedIndex == index,
-                    onClick = { homeWindowState.playSpeedIndex = index }
-                  )
-                  Text(s)
-                }
+            AnimatedVisibility(!homeWindowState.isStartButtonEnabled) {
+              OutlinedButton(
+                onClick = {
+                  homeWindowState.onDataSendCancel()
+                },
+                modifier = Modifier.padding(start = 4.dp)
+              ) {
+                Text("取消")
               }
             }
           }
 
-          Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.wrapContentWidth()
-          ) {
-            Text("目标端口类型")
-            Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-              RadioButton(
-                selected = homeWindowState.isNettyTarget,
-                onClick = { homeWindowState.isNettyTarget = true }
-              )
-              Text("Netty")
-              RadioButton(
-                selected = !homeWindowState.isNettyTarget,
-                onClick = { homeWindowState.isNettyTarget = false }
-              )
-              Text("Kafka")
-            }
+          Divider(Modifier.height(2.dp).width(300.dp))
 
-            Text("地址")
-            OutlinedTextField(
-              value = homeWindowState.host,
-              onValueChange = {
-                homeWindowState.host = it
-              },
-              label = { Text("例如：127.0.0.1") }
-            )
-
-            Text("端口")
-            OutlinedTextField(
-              value = homeWindowState.port,
-              onValueChange = { homeWindowState.port = it },
-              label = { Text("例如：9999") }
-            )
-
-            if (!homeWindowState.isNettyTarget) {
-              Text("Topic")
-              OutlinedTextField(value = homeWindowState.topic,
-                onValueChange = { homeWindowState.topic = it },
-                label = { Text("例如：Topic1") })
-            }
-
-            Row {
-              Button(
-                onClick = {
-                  homeWindowState.onDataSend()
-                },
-                enabled = homeWindowState.isStartButtonEnabled && homeWindowState.getSubmitState()
-              ) {
-                Text("开始发送")
-              }
-              AnimatedVisibility(!homeWindowState.isStartButtonEnabled) {
-                OutlinedButton(
-                  onClick = {
-                    homeWindowState.onDataSendCancel()
-                  },
-                  modifier = Modifier.padding(start = 4.dp)
-                ) {
-                  Text("取消")
-                }
-              }
-            }
-
-            Divider(Modifier.height(2.dp).width(300.dp))
-
-            Text("发送日志")
-            LazyColumn(modifier = Modifier.height(200.dp)) {
-              items(homeWindowState.logs) { log ->
-                Text(log)
-              }
+          Text("发送日志")
+          LazyColumn(modifier = Modifier.height(200.dp)) {
+            items(homeWindowState.logs) { log ->
+              Text(log)
             }
           }
         }
@@ -228,6 +212,10 @@ fun main() = application {
     state = windowState,
     onCloseRequest = ::exitApplication
   ) {
-    App()
+    MaterialTheme(
+      colors = if (isSystemInDarkTheme()) ui.darkColors else ui.lightColors
+    ) {
+      App()
+    }
   }
 }
