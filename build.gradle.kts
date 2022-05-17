@@ -19,8 +19,9 @@ repositories {
 dependencies {
   implementation(compose.desktop.currentOs)
 
-  implementation("io.netty:netty-all:4.1.76.Final")
   implementation("org.apache.poi:poi-ooxml:5.2.2")
+  implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.3.0")
+  implementation("io.netty:netty-all:4.1.76.Final")
   implementation("org.apache.kafka:kafka-clients:3.1.0")
 }
 

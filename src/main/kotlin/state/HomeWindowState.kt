@@ -3,17 +3,14 @@ package state
 import androidx.compose.material.ScaffoldState
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.*
+import com.github.doyaaaaaken.kotlincsv.util.CSVParseFormatException
 import core.KafkaTask
 import core.NettyTask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException
-import utils.NoValidTimeException
-import utils.TimeIndexNotValidException
-import utils.TimeIndexOutOfIndexException
-import utils.redExcel
+import utils.*
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -43,32 +40,19 @@ class HomeWindowState(
   val scaffoldState: ScaffoldState,
   private val scope: CoroutineScope,
 ) {
-  // 界面状态
-
   var isStartButtonEnabled by mutableStateOf(true)
-
   var error by mutableStateOf("")
-
-  // 数据状态
   var isGetTimeAutomatically by mutableStateOf(true)
   var dateColIndex by mutableStateOf("")
-
   var startRowIndex by mutableStateOf("")
   var endRowIndex by mutableStateOf("")
-
   var data by mutableStateOf<Map<LocalDateTime, List<String>>?>(null)
-
   var playSpeedIndex by mutableStateOf(2)
-
   var isNettyTarget by mutableStateOf(true)
-
   var host by mutableStateOf("127.0.0.1")
   var port by mutableStateOf("9999")
   var topic by mutableStateOf("Topic1")
-
   var logs by mutableStateOf(listOf<String>())
-
-
   var job by mutableStateOf<Job?>(null)
 
   fun getSubmitState(): Boolean {
@@ -81,7 +65,7 @@ class HomeWindowState(
 
   fun onReadExcel(filePath: String?): Boolean {
     try {
-      data = filePath?.redExcel(
+      data = filePath?.readExcel(
         dateColIndex = if (isGetTimeAutomatically) -1 else dateColIndex.toInt() - 1,
         startRowIndex = if (startRowIndex.isNotEmpty()) startRowIndex.toInt() - 1 else 0,
         endRowIndex = if (endRowIndex.isNotEmpty()) endRowIndex.toInt() - 1 else Int.MAX_VALUE
@@ -93,12 +77,13 @@ class HomeWindowState(
       data = null
       error = when (e) {
         is NoValidTimeException -> e.msg
-        is NotOfficeXmlFileException -> {
-          "所选文件并非有效 excel 文件"
+        is CSVParseFormatException -> {
+          "所选文件并非有效 excel 或 csv 文件"
         }
         is TimeIndexOutOfIndexException -> e.msg
         is TimeIndexNotValidException -> e.msg
         is NullPointerException -> "请检查上传的文件，确保不含空值"
+        is CSVAutoDateNotSupportException -> e.msg
         else -> {
           e.printStackTrace()
           "未知错误 ${e.message}"
@@ -161,8 +146,8 @@ class HomeWindowState(
 
 @Composable
 fun rememberHomeWindowState(
-  scaffoldState: ScaffoldState =  rememberScaffoldState(),
-  scope: CoroutineScope = rememberCoroutineScope()
+  scaffoldState: ScaffoldState = rememberScaffoldState(),
+  scope: CoroutineScope = rememberCoroutineScope(),
 ) = remember {
   HomeWindowState(
     scaffoldState = scaffoldState,
