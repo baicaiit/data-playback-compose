@@ -28,15 +28,16 @@ dependencies {
 }
 
 tasks.withType<KotlinCompile> {
-  kotlinOptions.jvmTarget = "11"
+  kotlinOptions.jvmTarget = "17"
 }
 
 compose.desktop {
   application {
     mainClass = "MainKt"
+    jvmArgs += listOf("-Dapple.awt.application.appearance=system")
     nativeDistributions {
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-      packageName = "cc.hyoban.data-playback-compose"
+      packageName = "数据回放"
       packageVersion = "1.0.0"
     }
   }
