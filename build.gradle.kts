@@ -14,6 +14,7 @@ repositories {
   google()
   mavenCentral()
   maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+  maven("https://jitpack.io")
 }
 
 dependencies {
@@ -23,6 +24,7 @@ dependencies {
   implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.3.0")
   implementation("io.netty:netty-all:4.1.76.Final")
   implementation("org.apache.kafka:kafka-clients:3.1.0")
+  implementation("com.github.Dansoftowner:jSystemThemeDetector:3.6")
 }
 
 tasks.withType<KotlinCompile> {
