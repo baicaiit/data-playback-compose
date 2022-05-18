@@ -7,7 +7,7 @@ import androidx.compose.ui.window.rememberWindowState
 import ui.page.HomePage
 
 fun main() = application {
-  val windowState = rememberWindowState(width = 850.dp, height = 850.dp)
+  val windowState = rememberWindowState(width = 900.dp, height = 850.dp)
   Window(
     title = "数据回放系统",
     state = windowState,

@@ -53,26 +53,24 @@ fun HomePage(
             }
           )
 
-          RadioGroup(
-            title = "回放速度",
-            options = listOf("0.1倍速", "0.5倍速", "1倍速", "10倍速", "100倍速"),
-            selectedIndex = homeWindowState.playSpeedIndex,
-            onSelectedChanged = { index ->
-              homeWindowState.playSpeedIndex = index
+          Text("回放间隔倍率")
+          OutlinedTextField(
+            value = homeWindowState.playSpeed,
+            onValueChange = { value ->
+              homeWindowState.playSpeed = value
             },
-            isHorizontal = false
           )
         }
 
         Column(
           verticalArrangement = Arrangement.spacedBy(8.dp),
-          modifier = Modifier.wrapContentWidth()
+          modifier = Modifier.wrapContentWidth().widthIn(max = 400.dp)
         ) {
           TargetForm(homeWindowState)
 
           OperatingArea(homeWindowState)
 
-          Divider(Modifier.height(2.dp).width(300.dp))
+          Divider(Modifier.height(2.dp).width(400.dp))
 
           Text("发送日志")
           LazyColumn(modifier = Modifier.height(200.dp)) {

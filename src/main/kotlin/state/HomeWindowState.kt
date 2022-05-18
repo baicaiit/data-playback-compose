@@ -10,12 +10,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import org.apache.poi.ooxml.POIXMLException
 import utils.*
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
-
-val magnification = listOf(10.0, 2.0, 1.0, 0.1, 0.01)
+import java.time.format.DateTimeFormatter
 
 enum class JobStatus {
   NEW,
@@ -47,7 +47,7 @@ class HomeWindowState(
   var startRowIndex by mutableStateOf("")
   var endRowIndex by mutableStateOf("")
   var data by mutableStateOf<Map<LocalDateTime, List<String>>?>(null)
-  var playSpeedIndex by mutableStateOf(2)
+  var playSpeed by mutableStateOf("10.0")
   var isNettyTarget by mutableStateOf(true)
   var host by mutableStateOf("127.0.0.1")
   var port by mutableStateOf("9999")
@@ -77,9 +77,8 @@ class HomeWindowState(
       data = null
       error = when (e) {
         is NoValidTimeException -> e.msg
-        is CSVParseFormatException -> {
-          "所选文件并非有效 excel 或 csv 文件"
-        }
+        is POIXMLException -> "所选文件并非有效 excel 或 csv 文件"
+        is CSVParseFormatException -> "所选文件并非有效 excel 或 csv 文件"
         is TimeIndexOutOfIndexException -> e.msg
         is TimeIndexNotValidException -> e.msg
         is NullPointerException -> "请检查上传的文件，确保不含空值"
@@ -88,14 +87,15 @@ class HomeWindowState(
           e.printStackTrace()
           "未知错误 ${e.message}"
         }
-      }
+      } + "@" + LocalDateTime.now().format(DateTimeFormatter.ISO_TIME)
       return false
     }
   }
 
   suspend fun showErrorMsg() {
+    val errorContent = error.split("@")
     if (error.isNotEmpty()) {
-      scaffoldState.snackbarHostState.showSnackbar(error)
+      scaffoldState.snackbarHostState.showSnackbar(errorContent[0])
     }
   }
 
@@ -105,41 +105,47 @@ class HomeWindowState(
 
   @OptIn(InternalCoroutinesApi::class)
   fun onDataSend() {
-    isStartButtonEnabled = false
-    data?.let {
-      val firstTaskTime = it.keys.first()
-      val baseTime = LocalDateTime.now()
+    println(playSpeed)
+    try {
+      isStartButtonEnabled = false
+      data?.let {
+        val firstTaskTime = it.keys.first()
+        val baseTime = LocalDateTime.now()
 
-      val tasks = data!!.map { entry ->
-        val durationLong =
-          (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
-        val durationWithSpeed =
-          Duration.ofSeconds((durationLong * magnification[playSpeedIndex]).toLong())
-        if (isNettyTarget) {
-          NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
-        } else {
-          KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
+        val tasks = data!!.map { entry ->
+          val durationLong =
+            (entry.key.toEpochSecond(ZoneOffset.UTC) - firstTaskTime.toEpochSecond(ZoneOffset.UTC))
+          val durationWithSpeed =
+            Duration.ofSeconds((durationLong * playSpeed.toDouble()).toLong())
+          if (isNettyTarget) {
+            NettyTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt())
+          } else {
+            KafkaTask(baseTime.plus(durationWithSpeed), entry.value, host, port.toInt(), topic)
+          }
         }
-      }
 
-      job = scope.launch {
-        tasks.forEach { task ->
-          task.run { content ->
-            logs = logs + "${task.time}:$content"
+        job = scope.launch {
+          tasks.forEach { task ->
+            task.run { content ->
+              logs = logs + "${task.time}:$content"
+            }
+          }
+        }
+        job?.let { job ->
+          job.invokeOnCompletion(true) {
+            if (
+              job.status() == JobStatus.COMPLETED ||
+              job.status() == JobStatus.CANCELLED ||
+              job.status() == JobStatus.CANCELLING
+            ) {
+              isStartButtonEnabled = true
+            }
           }
         }
       }
-      job?.let { job ->
-        job.invokeOnCompletion(true) {
-          if (
-            job.status() == JobStatus.COMPLETED ||
-            job.status() == JobStatus.CANCELLED ||
-            job.status() == JobStatus.CANCELLING
-          ) {
-            isStartButtonEnabled = true
-          }
-        }
-      }
+    } catch (e: NumberFormatException) {
+      error = "回放时间倍率非正常数量" + "@" + LocalDateTime.now().format(DateTimeFormatter.ISO_TIME)
+      isStartButtonEnabled = true
     }
   }
 }
