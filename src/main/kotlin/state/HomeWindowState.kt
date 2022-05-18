@@ -6,10 +6,7 @@ import androidx.compose.runtime.*
 import com.github.doyaaaaaken.kotlincsv.util.CSVParseFormatException
 import core.KafkaTask
 import core.NettyTask
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.InternalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import org.apache.poi.ooxml.POIXMLException
 import utils.*
 import java.time.Duration
@@ -43,17 +40,27 @@ class HomeWindowState(
   var isStartButtonEnabled by mutableStateOf(true)
   var error by mutableStateOf("")
   var isGetTimeAutomatically by mutableStateOf(true)
-  var dateColIndex by mutableStateOf("")
-  var startRowIndex by mutableStateOf("")
-  var endRowIndex by mutableStateOf("")
-  var data by mutableStateOf<Map<LocalDateTime, List<String>>?>(null)
-  var playSpeed by mutableStateOf("10.0")
+  var dateColIndex by mutableStateOf("3")
+  var startRowIndex by mutableStateOf("2")
+  var endRowIndex by mutableStateOf("10")
+  private var data by mutableStateOf<Map<LocalDateTime, List<String>>?>(null)
+  var playSpeed by mutableStateOf("0.0001")
   var isNettyTarget by mutableStateOf(true)
   var host by mutableStateOf("127.0.0.1")
-  var port by mutableStateOf("9999")
+  var port by mutableStateOf("19999")
   var topic by mutableStateOf("Topic1")
   var logs by mutableStateOf(listOf<String>())
-  var job by mutableStateOf<Job?>(null)
+  private var job by mutableStateOf<Job?>(null)
+  var isPaused by mutableStateOf(false)
+    private set
+
+  fun pause() {
+    isPaused = true
+  }
+
+  fun resume() {
+    isPaused = false
+  }
 
   fun getSubmitState(): Boolean {
     if (data == null) return false
@@ -126,8 +133,16 @@ class HomeWindowState(
 
         job = scope.launch {
           tasks.forEach { task ->
-            task.run { content ->
-              logs = logs + "${task.time}:$content"
+            var isTaskFinished = false
+            while (isActive && !isTaskFinished) {
+              if (!isPaused) {
+                task.run { content ->
+                  logs = logs + "${task.time} : $content"
+                  isTaskFinished = true
+                }
+              } else {
+                delay(5000)
+              }
             }
           }
         }

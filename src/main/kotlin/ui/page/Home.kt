@@ -96,13 +96,29 @@ fun OperatingArea(homeWindowState: HomeWindowState) {
       Text("开始发送")
     }
     AnimatedVisibility(!homeWindowState.isStartButtonEnabled) {
-      OutlinedButton(
-        onClick = {
-          homeWindowState.onDataSendCancel()
-        },
-        modifier = Modifier.padding(start = 4.dp)
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(start = 8.dp)
       ) {
-        Text("取消")
+        OutlinedButton(
+          onClick = {
+            if (homeWindowState.isPaused) {
+              homeWindowState.resume()
+            } else {
+              homeWindowState.pause()
+            }
+          },
+        ) {
+          Text(if (homeWindowState.isPaused) "恢复" else "暂停")
+        }
+
+        OutlinedButton(
+          onClick = {
+            homeWindowState.onDataSendCancel()
+          },
+        ) {
+          Text("取消")
+        }
       }
     }
   }
