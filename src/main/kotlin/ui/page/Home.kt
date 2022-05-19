@@ -48,6 +48,7 @@ fun HomePage(
           TimeForm(homeWindowState)
           RowIndexForm(homeWindowState)
           FileForm(
+            includedFileType = listOf("csv", "xlsx"),
             onFileSelected = {
               homeWindowState.onReadExcel(it)
             }

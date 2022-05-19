@@ -10,9 +10,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.AwtWindow
 import java.awt.FileDialog
 import java.awt.Frame
+import java.awt.Window
 
 @Composable
 fun FileForm(
+  includedFileType: List<String> = listOf(),
   onFileSelected: (result: String?) -> Boolean,
 ) {
   var isFileChooserOpen by remember { mutableStateOf(false) }
@@ -20,7 +22,8 @@ fun FileForm(
 
   if (isFileChooserOpen) {
     FileDialog(
-      onCloseRequest = { path ->
+      includedFileType = includedFileType,
+      onFileSelected = { path ->
         isFileChooserOpen = false
         path?.let {
           if (onFileSelected(it)) {
@@ -44,19 +47,37 @@ fun FileForm(
 }
 
 @Composable
-private fun FileDialog(
-  parent: Frame? = null,
-  onCloseRequest: (result: String?) -> Unit,
+fun FileDialog(
+  includedFileType: List<String> = listOf(),
+  onFileSelected: (result: String?) -> Unit,
 ) = AwtWindow(
   create = {
-    object : FileDialog(parent, "选择一个文件", LOAD) {
-      override fun setVisible(value: Boolean) {
-        super.setVisible(value)
-        if (value) {
-          onCloseRequest(if (file == null) null else directory + file)
+    AwtFileDialog(onFileSelected).apply {
+      this.setFilenameFilter { _, name ->
+        if (includedFileType.isNotEmpty()) {
+          includedFileType.any {
+            name.endsWith(".${it}")
+          }
+        } else {
+          true
         }
       }
     }
   },
-  dispose = FileDialog::dispose
+  dispose = Window::dispose
 )
+
+class AwtFileDialog(
+  private val onCloseRequest: (result: String?) -> Unit,
+  parent: Frame? = null,
+  title: String = "",
+  mode: Int = LOAD,
+) : FileDialog(parent, title, mode) {
+
+  override fun setVisible(value: Boolean) {
+    super.setVisible(value)
+    if (!this.isVisible) {
+      onCloseRequest(if (file == null) null else directory + file)
+    }
+  }
+}
