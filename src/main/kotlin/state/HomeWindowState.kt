@@ -39,8 +39,9 @@ class HomeWindowState(
 ) {
   var isStartButtonEnabled by mutableStateOf(true)
   var error by mutableStateOf("")
-  var isGetTimeAutomatically by mutableStateOf(true)
+  var isGetTimeAutomatically by mutableStateOf(false)
   var dateColIndex by mutableStateOf("3")
+  var dateTimeFormatterString by mutableStateOf("yyyy-MM-dd HH:mm:ss")
   var startRowIndex by mutableStateOf("2")
   var endRowIndex by mutableStateOf("10")
   private var data by mutableStateOf<Map<LocalDateTime, List<String>>?>(null)
@@ -70,10 +71,11 @@ class HomeWindowState(
     return true
   }
 
-  fun onReadExcel(filePath: String?): Boolean {
+  fun readExcel(filePath: String?): Boolean {
     try {
       data = filePath?.readExcel(
         dateColIndex = if (isGetTimeAutomatically) -1 else dateColIndex.toInt() - 1,
+        dateTimeFormatter = DateTimeFormatter.ofPattern(dateTimeFormatterString),
         startRowIndex = if (startRowIndex.isNotEmpty()) startRowIndex.toInt() - 1 else 0,
         endRowIndex = if (endRowIndex.isNotEmpty()) endRowIndex.toInt() - 1 else Int.MAX_VALUE
       )

@@ -20,6 +20,7 @@ class CSVAutoDateNotSupportException(val msg: String) : Exception(msg)
  */
 fun String.readExcel(
   dateColIndex: Int = -1,
+  dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
   startRowIndex: Int = 0,
   endRowIndex: Int = Int.MAX_VALUE,
 ): Map<LocalDateTime, List<String>> {
@@ -63,29 +64,29 @@ fun String.readExcel(
       }
     }
   } catch (e: NotOfficeXmlFileException) {
-    val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-    val rows = csvReader().readAll(FileInputStream(this))
-    if (dateColIndex == -1) {
-      throw CSVAutoDateNotSupportException("csv 文件不支持自动获取时间列")
-    }
+    var cur = 0
+    csvReader().open(this) {
+      readAllAsSequence().forEach {
+        if (dateColIndex == -1) {
+          throw CSVAutoDateNotSupportException("csv 文件不支持自动获取时间列")
+        }
+        if (dateColIndex >= it.size) {
+          throw TimeIndexOutOfIndexException("所选时间列号不存在")
+        }
+        if (cur > endRowIndex) {
+          return@open
+        }
 
-    println("${rows.size} $startRowIndex $endRowIndex")
-    for (row in startRowIndex..min(rows.size, endRowIndex)) {
-      val content = ArrayList<String>()
-      val maxCol = rows[row].size
-      println("表格共有$maxCol 列")
-      if (dateColIndex >= maxCol) {
-        throw TimeIndexOutOfIndexException("所选时间列号不存在")
-      }
-      try {
-        val dateTime = LocalDateTime.parse(rows[row][dateColIndex].trim(), dateTimeFormatter)
-        map[dateTime] = content
-      } catch (e: DateTimeException) {
-        throw TimeIndexNotValidException("所选时间列数据并非时间格式")
-      }
-      for (col in 0 until maxCol) {
-        if (col != dateColIndex)
-          content.add(rows[row][col])
+        if (cur in startRowIndex..endRowIndex) {
+          try {
+            val dateTime = LocalDateTime.parse(it[dateColIndex].trim(), dateTimeFormatter)
+            map[dateTime] = it.filterIndexed { index, _ -> index != dateColIndex }
+          } catch (e: DateTimeException) {
+            throw TimeIndexNotValidException("所选时间列数据并非时间格式")
+          }
+        }
+        println(cur)
+        cur++
       }
     }
   }

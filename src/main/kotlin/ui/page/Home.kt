@@ -50,7 +50,7 @@ fun HomePage(
           FileForm(
             includedFileType = listOf("csv", "xlsx"),
             onFileSelected = {
-              homeWindowState.onReadExcel(it)
+              homeWindowState.readExcel(it)
             }
           )
 
@@ -199,4 +199,12 @@ fun TimeForm(homeWindowState: HomeWindowState) {
       }
     )
   }
+
+  OutlinedTextField(
+    value = homeWindowState.dateTimeFormatterString,
+    onValueChange = { value ->
+      homeWindowState.dateTimeFormatterString = value
+    },
+    label = { Text("时间日期格式规则") }
+  )
 }
