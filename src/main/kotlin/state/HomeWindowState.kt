@@ -42,6 +42,7 @@ class HomeWindowState(
   var isGetTimeAutomatically by mutableStateOf(false)
   var dateColIndex by mutableStateOf("3")
   var dateTimeFormatterString by mutableStateOf("yyyy-MM-dd HH:mm:ss")
+  var selectedColIndex by mutableStateOf("")
   var startRowIndex by mutableStateOf("2")
   var endRowIndex by mutableStateOf("10")
   private var data by mutableStateOf<Map<LocalDateTime, List<String>>?>(null)
@@ -76,6 +77,7 @@ class HomeWindowState(
       data = filePath?.readExcel(
         dateColIndex = if (isGetTimeAutomatically) -1 else dateColIndex.toInt() - 1,
         dateTimeFormatter = DateTimeFormatter.ofPattern(dateTimeFormatterString),
+        selectedColIndex = selectedColIndex.split(",").map { it.trim().toInt() - 1 },
         startRowIndex = if (startRowIndex.isNotEmpty()) startRowIndex.toInt() - 1 else 0,
         endRowIndex = if (endRowIndex.isNotEmpty()) endRowIndex.toInt() - 1 else Int.MAX_VALUE
       )

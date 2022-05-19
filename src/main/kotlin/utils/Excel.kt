@@ -21,6 +21,7 @@ class CSVAutoDateNotSupportException(val msg: String) : Exception(msg)
 fun String.readExcel(
   dateColIndex: Int = -1,
   dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+  selectedColIndex: List<Int> = listOf(),
   startRowIndex: Int = 0,
   endRowIndex: Int = Int.MAX_VALUE,
 ): Map<LocalDateTime, List<String>> {
@@ -54,8 +55,11 @@ fun String.readExcel(
             map[cell.localDateTimeCellValue] = content
             dateFlag = true
           } else {
-            if (col != dateColIndex)
-              content.add(cell.toString())
+            if (col != dateColIndex) {
+              if (selectedColIndex.isEmpty() || (col in selectedColIndex)) {
+                content.add(cell.toString().trim())
+              }
+            }
           }
         }
         if (!dateFlag) {
@@ -66,11 +70,11 @@ fun String.readExcel(
   } catch (e: NotOfficeXmlFileException) {
     var cur = 0
     csvReader().open(this) {
-      readAllAsSequence().forEach {
+      readAllAsSequence().forEach { line ->
         if (dateColIndex == -1) {
           throw CSVAutoDateNotSupportException("csv 文件不支持自动获取时间列")
         }
-        if (dateColIndex >= it.size) {
+        if (dateColIndex >= line.size) {
           throw TimeIndexOutOfIndexException("所选时间列号不存在")
         }
         if (cur > endRowIndex) {
@@ -79,8 +83,14 @@ fun String.readExcel(
 
         if (cur in startRowIndex..endRowIndex) {
           try {
-            val dateTime = LocalDateTime.parse(it[dateColIndex].trim(), dateTimeFormatter)
-            map[dateTime] = it.filterIndexed { index, _ -> index != dateColIndex }
+            val dateTime = LocalDateTime.parse(line[dateColIndex].trim(), dateTimeFormatter)
+            map[dateTime] = line.filterIndexed { index, _ ->
+              if (selectedColIndex.isEmpty() || (index in selectedColIndex)) {
+                index != dateColIndex
+              } else {
+                false
+              }
+            }.map { it.trim() }
           } catch (e: DateTimeException) {
             throw TimeIndexNotValidException("所选时间列数据并非时间格式")
           }

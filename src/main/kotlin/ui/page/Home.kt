@@ -47,6 +47,7 @@ fun HomePage(
 
           TimeForm(homeWindowState)
           RowIndexForm(homeWindowState)
+          ColIndexForm(homeWindowState)
           FileForm(
             includedFileType = listOf("csv", "xlsx"),
             onFileSelected = {
@@ -158,6 +159,19 @@ fun TargetForm(homeWindowState: HomeWindowState) {
       onValueChange = { homeWindowState.topic = it },
       label = { Text("例如：Topic1") })
   }
+}
+
+@Composable
+fun ColIndexForm(homeWindowState: HomeWindowState) {
+  Text("请输入需要发送的数据列，默认发送除时间列外数据")
+
+  OutlinedTextField(
+    value = homeWindowState.selectedColIndex,
+    onValueChange = { value ->
+      homeWindowState.selectedColIndex = value
+    },
+    label = { Text("选择的列号，以逗号分割") }
+  )
 }
 
 @Composable
