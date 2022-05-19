@@ -76,7 +76,7 @@ class AwtFileDialog(
 
   override fun setVisible(value: Boolean) {
     super.setVisible(value)
-    if (!this.isVisible) {
+    if (value) {
       onCloseRequest(if (file == null) null else directory + file)
     }
   }
