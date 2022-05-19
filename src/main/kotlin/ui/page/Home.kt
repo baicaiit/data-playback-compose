@@ -11,8 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import state.HomeWindowState
-import state.rememberHomeWindowState
 import ui.component.FileForm
 import ui.component.RadioGroup
 import utils.onlyReturnNumber
@@ -20,7 +18,7 @@ import utils.onlyReturnNumber
 @Composable
 @Preview
 fun HomePage(
-  homeWindowState: HomeWindowState = rememberHomeWindowState(),
+  homeWindowState: HomeWindowState,
 ) {
 
   LaunchedEffect(homeWindowState.error) {

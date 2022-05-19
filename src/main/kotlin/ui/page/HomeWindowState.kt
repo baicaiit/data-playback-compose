@@ -1,13 +1,19 @@
-package state
+package ui.page
 
+import androidx.compose.material.DrawerState
+import androidx.compose.material.DrawerValue
 import androidx.compose.material.ScaffoldState
-import androidx.compose.material.rememberScaffoldState
-import androidx.compose.runtime.*
+import androidx.compose.material.SnackbarHostState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Notification
 import com.github.doyaaaaaken.kotlincsv.util.CSVParseFormatException
 import core.KafkaTask
 import core.NettyTask
 import kotlinx.coroutines.*
 import org.apache.poi.ooxml.POIXMLException
+import ui.DataPlaybackAppState
 import utils.*
 import java.time.Duration
 import java.time.LocalDateTime
@@ -23,7 +29,6 @@ enum class JobStatus {
 }
 
 fun Job.status(): JobStatus {
-  println("job status: isActive $isActive isCompleted $isCompleted isCancelled $isCancelled")
   return when {
     !isActive && isCompleted && !isCancelled -> JobStatus.COMPLETED
     !isActive && isCompleted && isCancelled -> JobStatus.CANCELLED
@@ -34,9 +39,11 @@ fun Job.status(): JobStatus {
 }
 
 class HomeWindowState(
-  val scaffoldState: ScaffoldState,
-  private val scope: CoroutineScope,
+  private val app: DataPlaybackAppState,
 ) {
+  val scaffoldState = ScaffoldState(DrawerState(DrawerValue.Closed), SnackbarHostState())
+  private val scope = CoroutineScope(Job())
+
   var isStartButtonEnabled by mutableStateOf(true)
   var error by mutableStateOf("")
   var isGetTimeAutomatically by mutableStateOf(false)
@@ -77,7 +84,8 @@ class HomeWindowState(
       data = filePath?.readExcel(
         dateColIndex = if (isGetTimeAutomatically) -1 else dateColIndex.toInt() - 1,
         dateTimeFormatter = DateTimeFormatter.ofPattern(dateTimeFormatterString),
-        selectedColIndex = selectedColIndex.split(",").map { it.trim().toInt() - 1 },
+        selectedColIndex = if (selectedColIndex.isEmpty()) listOf() else
+          selectedColIndex.split(",").map { it.trim().toInt() - 1 },
         startRowIndex = if (startRowIndex.isNotEmpty()) startRowIndex.toInt() - 1 else 0,
         endRowIndex = if (endRowIndex.isNotEmpty()) endRowIndex.toInt() - 1 else Int.MAX_VALUE
       )
@@ -152,12 +160,27 @@ class HomeWindowState(
         }
         job?.let { job ->
           job.invokeOnCompletion(true) {
-            if (
-              job.status() == JobStatus.COMPLETED ||
+            if (job.status() == JobStatus.COMPLETED) {
+              isStartButtonEnabled = true
+              app.sendNotification(
+                Notification(
+                  title = "任务已完成",
+                  message = "",
+                  type = Notification.Type.Info
+                )
+              )
+            } else if (
               job.status() == JobStatus.CANCELLED ||
               job.status() == JobStatus.CANCELLING
             ) {
               isStartButtonEnabled = true
+              app.sendNotification(
+                Notification(
+                  title = "任务已被取消",
+                  message = "",
+                  type = Notification.Type.Info
+                )
+              )
             }
           }
         }
@@ -167,15 +190,4 @@ class HomeWindowState(
       isStartButtonEnabled = true
     }
   }
-}
-
-@Composable
-fun rememberHomeWindowState(
-  scaffoldState: ScaffoldState = rememberScaffoldState(),
-  scope: CoroutineScope = rememberCoroutineScope(),
-) = remember {
-  HomeWindowState(
-    scaffoldState = scaffoldState,
-    scope = scope
-  )
 }
