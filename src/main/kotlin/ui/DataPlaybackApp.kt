@@ -2,6 +2,7 @@ package ui
 
 import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Tray
@@ -10,21 +11,28 @@ import ui.page.HomePage
 
 @Composable
 fun ApplicationScope.DataPlaybackApp(
-  state: DataPlaybackAppState =
-    rememberDataPlaybackAppState().apply { newWindow() },
+  state: DataPlaybackAppState = rememberDataPlaybackAppState(),
 ) {
   val isDark = rememberDesktopDarkTheme()
 
-  Window(
-    title = "数据回放系统",
-    state = state.windowState,
-    visible = state.isVisible,
-    onCloseRequest = { state.hideWindow() }
-  ) {
-    MaterialTheme(
-      colors = if (isDark) darkColors else lightColors
-    ) {
-      HomePage(state.windows[0])
+  for (window in state.windows) {
+    key(window) {
+      Window(
+        title = window.title,
+        state = window.windowState,
+        onCloseRequest = {
+          window.close()
+          if (state.windows.isEmpty()) {
+            exitApplication()
+          }
+        }
+      ) {
+        MaterialTheme(
+          colors = if (isDark) darkColors else lightColors
+        ) {
+          HomePage(window)
+        }
+      }
     }
   }
   AppTray(state)
@@ -37,12 +45,15 @@ fun ApplicationScope.AppTray(state: DataPlaybackAppState) {
     icon = painterResource("CarbonData1.svg"),
     menu = {
       Item(
-        "主页面",
-        onClick = { state.showWindow() }
+        "新窗口",
+        onClick = { state.newWindow() }
       )
       Item(
         "退出程序",
-        onClick = ::exitApplication
+        onClick = {
+          state.exit()
+          exitApplication()
+        }
       )
     }
   )

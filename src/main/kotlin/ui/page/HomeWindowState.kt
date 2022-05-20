@@ -7,7 +7,9 @@ import androidx.compose.material.SnackbarHostState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Notification
+import androidx.compose.ui.window.WindowState
 import com.github.doyaaaaaken.kotlincsv.util.CSVParseFormatException
 import core.KafkaTask
 import core.NettyTask
@@ -40,9 +42,14 @@ fun Job.status(): JobStatus {
 
 class HomeWindowState(
   private val app: DataPlaybackAppState,
+  val title: String,
+  private val close: (HomeWindowState) -> Unit,
 ) {
   val scaffoldState = ScaffoldState(DrawerState(DrawerValue.Closed), SnackbarHostState())
   private val scope = CoroutineScope(Job())
+  val windowState = WindowState(width = 900.dp, height = 850.dp)
+
+  fun close() = close(this)
 
   var isStartButtonEnabled by mutableStateOf(true)
   var error by mutableStateOf("")
