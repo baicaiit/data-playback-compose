@@ -1,7 +1,6 @@
 package ui.page
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,7 +15,6 @@ import ui.component.RadioGroup
 import utils.onlyReturnNumber
 
 @Composable
-@Preview
 fun HomePage(
   homeWindowState: HomeWindowState,
 ) {
@@ -153,11 +151,19 @@ fun TargetForm(homeWindowState: HomeWindowState) {
     label = { Text("例如：9999") }
   )
 
-  if (!homeWindowState.isNettyTarget) {
-    Text("Topic")
-    OutlinedTextField(value = homeWindowState.topic,
-      onValueChange = { homeWindowState.topic = it },
-      label = { Text("例如：Topic1") })
+  AnimatedVisibility(
+    !homeWindowState.isNettyTarget,
+    enter = slideInVertically() + expandVertically(),
+    exit = slideOutVertically() + shrinkVertically(),
+  ) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Text("Topic")
+      OutlinedTextField(
+        value = homeWindowState.topic,
+        onValueChange = { homeWindowState.topic = it },
+        label = { Text("例如：Topic1") }
+      )
+    }
   }
 }
 
@@ -205,7 +211,11 @@ fun TimeForm(homeWindowState: HomeWindowState) {
     }
   )
 
-  AnimatedVisibility(!homeWindowState.isGetTimeAutomatically) {
+  AnimatedVisibility(
+    !homeWindowState.isGetTimeAutomatically,
+    enter = slideInVertically() + expandVertically(),
+    exit = slideOutVertically() + shrinkVertically(),
+  ) {
     OutlinedTextField(
       value = homeWindowState.dateColIndex,
       onValueChange = { value ->
