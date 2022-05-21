@@ -103,6 +103,8 @@ class HomeWindowState(
     } catch (e: Exception) {
       data = null
       error = when (e) {
+        is IllegalArgumentException -> e.message
+        is IllegalStateException -> e.message
         is NoValidTimeException -> e.msg
         is POIXMLException -> "所选文件并非有效 excel 或 csv 文件"
         is CSVParseFormatException -> "所选文件并非有效 excel 或 csv 文件"
@@ -112,7 +114,7 @@ class HomeWindowState(
         is CSVAutoDateNotSupportException -> e.msg
         else -> {
           e.printStackTrace()
-          "未知错误 ${e.message}"
+          "未知错误: ${e::class.java} ${e.message}"
         }
       } + "@" + LocalDateTime.now().format(DateTimeFormatter.ISO_TIME)
       return false

@@ -29,7 +29,7 @@ fun readExcelOrCsv(
   endRowIndex: Int = Int.MAX_VALUE,
 ): Map<LocalDateTime, List<String>> {
 
-  check(path.trim().length == path.length) { "路径首尾存在空白字符" }
+  require(path.trim().length == path.length) { "路径首尾存在空白字符" }
 
   val fileType = when {
     path.endsWith(".csv") -> FileType.CSV
@@ -38,7 +38,7 @@ fun readExcelOrCsv(
   }
   check(fileType == FileType.EXCEL || fileType == FileType.CSV) { "$path 并非 csv 或者 excel 文件" }
 
-  require(File(path).isFile) { "$path 文件不存在" }
+  check(File(path).isFile) { "$path 文件不存在" }
 
   return if (fileType == FileType.EXCEL) {
     readExcel(path, dateColIndex, selectedColIndex, startRowIndex, endRowIndex)
@@ -60,12 +60,12 @@ private fun readExcel(
   for (i in 0 until sheetNum) {
     val sheet = xssfWorkbook.getSheetAt(i)
     val maxRow = sheet.lastRowNum
-    println("表格共有$maxRow 行")
+
     for (row in startRowIndex..min(maxRow, endRowIndex)) {
       var dateFlag = false
       val content = ArrayList<String>()
       val maxCol = sheet.getRow(row).lastCellNum.toInt()
-      println("表格共有$maxCol 列")
+
       if (dateColIndex >= maxCol) {
         throw TimeIndexOutOfIndexException("所选时间列号不存在")
       }
@@ -107,17 +107,14 @@ private fun readCsv(
   endRowIndex: Int,
 ): Map<LocalDateTime, List<String>> {
 
+  require(dateColIndex >= 0) { "csv 文件不支持自动获取时间列" }
+
   val map = HashMap<LocalDateTime, List<String>>()
 
-  var cur = 0
   csvReader().open(path) {
-    readAllAsSequence().forEach { line ->
-      if (dateColIndex == -1) {
-        throw CSVAutoDateNotSupportException("csv 文件不支持自动获取时间列")
-      }
-      if (dateColIndex >= line.size) {
-        throw TimeIndexOutOfIndexException("所选时间列号不存在")
-      }
+    readAllAsSequence().forEachIndexed { cur, line ->
+      check(dateColIndex < line.size) { "所选时间列号 $dateColIndex 不存在" }
+
       if (cur > endRowIndex) {
         return@open
       }
@@ -136,8 +133,6 @@ private fun readCsv(
           throw TimeIndexNotValidException("所选时间列数据并非时间格式")
         }
       }
-      println(cur)
-      cur++
     }
   }
 
