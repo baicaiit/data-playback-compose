@@ -86,9 +86,10 @@ class HomeWindowState(
     return true
   }
 
-  fun readExcel(filePath: String?): Boolean {
+  fun readExcel(filePath: String): Boolean {
     try {
-      data = filePath?.readExcel(
+      data = readExcelOrCsv(
+        path = filePath,
         dateColIndex = if (isGetTimeAutomatically) -1 else dateColIndex.toInt() - 1,
         dateTimeFormatter = DateTimeFormatter.ofPattern(dateTimeFormatterString),
         selectedColIndex = if (selectedColIndex.isEmpty()) listOf() else

@@ -48,8 +48,10 @@ fun HomePage(
           ColIndexForm(homeWindowState)
           FileForm(
             includedFileType = listOf("csv", "xlsx"),
-            onFileSelected = {
-              homeWindowState.readExcel(it)
+            onFileSelected = { path ->
+              path?.let {
+                homeWindowState.readExcel(it)
+              } ?: false
             }
           )
 
