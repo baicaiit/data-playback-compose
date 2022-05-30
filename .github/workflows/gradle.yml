@@ -1,5 +1,8 @@
 name: Build package for app
-on: push
+on:
+  push:
+    tags:
+      - '*'
 jobs:
   gradle:
     strategy:
