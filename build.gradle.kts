@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "cc.hyoban"
-version = "1.0"
+version = "1.0.1"
 
 repositories {
   google()
@@ -39,7 +39,6 @@ compose.desktop {
       includeAllModules = true
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
       packageName = "DataPlayback"
-      packageVersion = "1.0.0"
       windows {
         dirChooser = true
         perUserInstall = true
