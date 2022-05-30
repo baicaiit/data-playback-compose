@@ -40,7 +40,6 @@ compose.desktop {
       packageName = "DataPlayback"
       packageVersion = "1.0.0"
       windows {
-        console = true
         dirChooser = true
         perUserInstall = true
         menuGroup = "DataPlayback"
