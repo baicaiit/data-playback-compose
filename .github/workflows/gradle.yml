@@ -1,4 +1,4 @@
-name: Run Gradle on PRs
+name: Build package for app
 on: push
 jobs:
   gradle:
