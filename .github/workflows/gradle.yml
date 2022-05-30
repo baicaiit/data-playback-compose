@@ -25,3 +25,8 @@ jobs:
           name: build-result
           path: |
             build/compose/binaries/main
+
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "dmg/*.dmg,msi/*.msi,deb/*.deb"
+          token: ${{ secrets.GITHUB_TOKEN }}
