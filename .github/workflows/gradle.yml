@@ -18,3 +18,10 @@ jobs:
 
       - name: Execute Gradle package
         run: ./gradlew package
+
+      - name: Upload build reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-result
+          path: |
+            build/compose/binaries/main
