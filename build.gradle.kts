@@ -36,6 +36,7 @@ compose.desktop {
     mainClass = "MainKt"
     jvmArgs += listOf("-Dapple.awt.application.appearance=system")
     nativeDistributions {
+      includeAllModules = true
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
       packageName = "DataPlayback"
       packageVersion = "1.0.0"
