@@ -37,8 +37,14 @@ compose.desktop {
     jvmArgs += listOf("-Dapple.awt.application.appearance=system")
     nativeDistributions {
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-      packageName = "数据回放"
+      packageName = "DataPlayback"
       packageVersion = "1.0.0"
+      windows {
+        console = true
+        dirChooser = true
+        perUserInstall = true
+        menuGroup = "DataPlayback"
+      }
     }
   }
 }
